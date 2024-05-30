@@ -23,37 +23,45 @@ foreach ($appliance in $appliances) {
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
         foreach ($server in $servers) {
             # Construct the URI for local storage details (corrected)
-            $localStorageUri = $server.uri + '/localStorage'  
+            $localStorageUri = $server.uri + '/localStorage'
             # Retrieve the local storage details (using Invoke-OVCommand)
             $localStorageDetails = Invoke-OVCommand -uri $localStorageUri
             # Check if localStorageDetails is not null
             if ($null -ne $localStorageDetails) {
-                # Extract the necessary information
-                $info = [PSCustomObject]@{
-                    AdapterType               = $localStorageDetails.Data.AdapterType
-                    BackupPowerSourceStatus   = $localStorageDetails.Data.BackupPowerSourceStatus
-                    CacheMemorySizeMiB        = $localStorageDetails.Data.CacheMemorySizeMiB
-                    CurrentOperatingMode      = $localStorageDetails.Data.CurrentOperatingMode
-                    ExternalPortCount         = $localStorageDetails.Data.ExternalPortCount
-                    FirmwareVersion           = $localStorageDetails.Data.FirmwareVersion.Current
-                    InternalPortCount         = $localStorageDetails.Data.InternalPortCount
-                    Location                  = $localStorageDetails.Data.Location
-                    LocationFormat            = $localStorageDetails.Data.LocationFormat
-                    Model                     = $localStorageDetails.Data.Model
-                    Name                      = $localStorageDetails.Data.Name
-                    PhysicalDrives            = ($localStorageDetails.Data.PhysicalDrives | ForEach-Object {
-                        "{$_.BlockSizeBytes},{$_.CapacityLogicalBlocks},{$_.CapacityMiB},{$_.EncryptedDrive},{$_.FirmwareVersion},{$_.Location},{$_.Model},{$_.SerialNumber},{$_.Status}"
-                    }) -join ','
-                    SerialNumber               = $localStorageDetails.Data.SerialNumber
-                    Status                    = $localStorageDetails.Data.Status
+                # Iterate over each physical drive to create individual records
+                foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
+                    $info = [PSCustomObject]@{
+                        ApplianceFQDN             = $fqdn
+                        Servername                = $server.name
+                        AdapterType               = $localStorageDetails.Data.AdapterType
+                        CurrentOperatingMode      = $localStorageDetails.Data.CurrentOperatingMode
+                        ExternalPortCount         = $localStorageDetails.Data.ExternalPortCount
+                        FirmwareVersion           = $localStorageDetails.Data.FirmwareVersion.Current
+                        InternalPortCount         = $localStorageDetails.Data.InternalPortCount
+                        Location                  = $localStorageDetails.Data.Location
+                        LocationFormat            = $localStorageDetails.Data.LocationFormat
+                        Model                     = $localStorageDetails.Data.Model
+                        Name                      = $localStorageDetails.Data.Name
+                        SerialNumber               = $localStorageDetails.Data.SerialNumber
+                        Status                    = $localStorageDetails.Data.Status
+                        Drive_BlockSizeBytes       = $drive.BlockSizeBytes
+                        Drive_CapacityLogicalBlocks = $drive.CapacityLogicalBlocks
+                        Drive_CapacityMiB          = $drive.CapacityMiB
+                        Drive_EncryptedDrive       = $drive.EncryptedDrive
+                        Drive_FirmwareVersion      = $drive.FirmwareVersion
+                        Drive_Location            = $drive.Location
+                        Drive_Model               = $drive.Model
+                        Drive_SerialNumber        = $drive.SerialNumber
+                        Drive_Status              = $drive.Status
+                    }
+                    # Add the collected information to the data array
+                    $data += $info
                 }
-                # Add the collected information to the data array
-                $data += $info
             }
-        } 
+        }
     }
     catch {
-        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)" 
+        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)"
         Write-Warning $errorMessage
         $errorMessage | Add-Content -Path $logFile
     }
