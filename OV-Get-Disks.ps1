@@ -1,8 +1,6 @@
 [CmdletBinding()]
 Param (
-    [Parameter(Mandatory = $true, HelpMessage = "Path to CSV file containing OneView instances.")]
-    [string]$csvFilePath,
-    [Parameter(HelpMessage = "Filter by device interface (All, SAS, SATA, etc.). Defaults to All.")]
+    [Parameter(Mandatory = $true, HelpMessage = "Filter by device interface (All, SAS, SATA, etc.). Defaults to All.")]
     [string]$interfaceType = 'All',
     [Parameter(HelpMessage = "Filter by media type (All, SSD, HDD). Defaults to All.")]
     [string]$mediaType = 'All'
@@ -61,24 +59,24 @@ Function Get-ServerInventory {
 
 $date = (Get-Date).ToString('MM_dd_yyyy')
 
-# Read OneView instances from CSV
-$oneviewInstances = Import-Csv -Path $csvFilePath
+# Get the path to the current script directory
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
+# Construct the full path to the appliance list CSV file
+$applianceListPath = Join-Path $scriptPath "Appliance_Appliances_liste.csv"
 
-foreach ($instance in $oneviewInstances) {
-    $hostName = $instance.hostName
-    $userName = $instance.userName
-    $password = $instance.password
-    $authLoginDomain = $instance.authLoginDomain
+# Read appliance FQDNs from CSV
+$appliances = Import-Csv -Path $applianceListPath
+
+foreach ($appliance in $appliances) {
+    $hostName = $appliance.Appliance_FQDN # Get FQDN from the column
 
     $diskInventory = @("Server,serverModel,serverSN,Interface,MediaType,SerialNumber,firmware,ssdEnduranceUtilizationPercentage,powerOnHours")
 
-    # Securely store credentials
-    $securePassword = $password | ConvertTo-SecureString -AsPlainText -Force
-    $cred = New-Object System.Management.Automation.PSCredential -ArgumentList $userName, $securePassword
-
     Write-Host -ForegroundColor Cyan "---- Connecting to OneView --> $hostName"
     try {
-        Connect-HPOVMgmt -Hostname $hostName -loginAcknowledge:$true -AuthLoginDomain $authLoginDomain -Credential $cred
+        # Assuming you're using a service account with access to all appliances:
+        Connect-HPOVMgmt -Hostname $hostName -loginAcknowledge:$true 
+       
 
         $outFile = "$hostName-$date-disk_Inventory.csv"
         $errorFile = "$hostName-$date-errors.txt"
