@@ -30,22 +30,36 @@ foreach ($appliance in $appliances) {
             if ($null -ne $localStorageDetails) {
                 # Extract the necessary information
                 $info = [PSCustomObject]@{
-                    ApplianceFQDN             = $fqdn
-                    AdapterType               = $localStorageDetails.Data.AdapterType                 
-                    CacheMemorySizeMiB        = $localStorageDetails.Data.CacheMemorySizeMiB
-                    CurrentOperatingMode      = $localStorageDetails.Data.CurrentOperatingMode
-                    FirmwareVersion           = $localStorageDetails.Data.FirmwareVersion.Current
-                    InternalPortCount         = $localStorageDetails.Data.InternalPortCount
-                    Location                  = $localStorageDetails.Data.Location
-                    LocationFormat            = $localStorageDetails.Data.LocationFormat
-                    Model                     = $localStorageDetails.Data.Model
-                    Name                      = $localStorageDetails.Data.Name
-                    PhysicalDrives            = ($localStorageDetails.Data.PhysicalDrives | ForEach-Object {
-                        "{$_.BlockSizeBytes},{$_.CapacityLogicalBlocks},{$_.CapacityMiB},{$_.EncryptedDrive},{$_.FirmwareVersion},{$_.Location},{$_.Model},{$_.SerialNumber},{$_.Status}"
-                    }) -join ','
-                    SerialNumber               = $localStorageDetails.Data.SerialNumber
+                    ApplianceFQDN        = $fqdn
+                    ServerName           = $server.Name
+                    ServerStatus         = $server.Status
+                    ServerPower          = $server.Power
+                    ServerSerialNumber   = $server.SerialNumber
+                    ServerModel          = $server.Model
+                    AdapterType          = $localStorageDetails.Data.AdapterType                 
+                    CacheMemorySizeMiB   = $localStorageDetails.Data.CacheMemorySizeMiB
+                    CurrentOperatingMode = $localStorageDetails.Data.CurrentOperatingMode
+                    FirmwareVersion      = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
+                    InternalPortCount    = $localStorageDetails.Data.InternalPortCount
+                    Location             = $localStorageDetails.Data.Location
+                    LocationFormat       = $localStorageDetails.Data.LocationFormat
+                    Model                = $localStorageDetails.Data.Model
+                    Name                 = $localStorageDetails.Data.Name
+                    PhysicalDrives       = $localStorageDetails.Data.PhysicalDrives | ForEach-Object {
+                        [PSCustomObject]@{
+                            BlockSizeBytes        = $_.BlockSizeBytes
+                            CapacityLogicalBlocks = $_.CapacityLogicalBlocks
+                            CapacityMiB           = $_.CapacityMiB
+                            EncryptedDrive        = $_.EncryptedDrive
+                            FirmwareVersion       = $_.FirmwareVersion
+                            Location              = $_.Location
+                            Model                 = $_.Model
+                            SerialNumber          = $_.SerialNumber
+                            Status                = $_.Status
+                        }
+                    }
+                    SerialNumber         = $localStorageDetails.Data.SerialNumber
                 }
-
                 $info | Add-Member -NotePropertyName Health -NotePropertyValue $localStorageDetails.Data.Status.Health
                 $info | Add-Member -NotePropertyName State -NotePropertyValue $localStorageDetails.Data.Status.State
                 # Add the collected information to the data list
