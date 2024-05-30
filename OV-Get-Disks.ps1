@@ -31,37 +31,35 @@ foreach ($appliance in $appliances) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     # Extract the necessary information
                     $info = [PSCustomObject]@{
-                        ApplianceFQDN        = $fqdn
-                        ServerName           = $server.Name
-                        ServerStatus         = $server.Status
-                        ServerPower          = $server.PowerState
-                        ServerSerialNumber   = $server.SerialNumber
-                        ServerModel          = $server.Model
-                        AdapterType          = $localStorageDetails.Data.AdapterType
-                        CurrentOperatingMode = $localStorageDetails.Data.CurrentOperatingMode                 
-                        FirmwareVersion      = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
-                        InternalPortCount    = $localStorageDetails.Data.InternalPortCount
-                        Location             = $localStorageDetails.Data.Location
-                        LocationFormat       = $localStorageDetails.Data.LocationFormat                      
-                        LogicalDriveNumbers  = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.LogicalDriveNumber }) -join ', '
-                        MediaType            = $localStorageDetails.Data.MediaType
-                        RaidValues           = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.Raid }) -join ', '
-                        Model                = $localStorageDetails.Data.Model
-                        Name                 = $localStorageDetails.Data.Name
-                        DriveBlockSizeBytes  = $drive.BlockSizeBytes
-                        LogicalCapacityGB    = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / (1024 * 1024 * 1024), 2)
-                        CapacityGBValues     = ($localStorageDetails.Data.PhysicalDrives | ForEach-Object { [math]::Round($_.CapacityMiB / 1024, 2) }) -join ', '
-                        DriveEncryptedDrive  = $drive.EncryptedDrive
-                        DriveFirmwareVersion = $drive.FirmwareVersion.Current.VersionString
-                        DriveInterfaceType   = $drive.InterfaceType
-                        DriveMediaType       = $drive.MediaType
-                        DriveLocation        = $drive.Location
-                        DriveModel           = $drive.Model
-                        DriveSerialNumber    = $drive.SerialNumber
-                        DriveStatus          = $drive.Status.Health
-                        DriveState           = $drive.Status.State
-                        PowerOnHours         = $drive.PowerOnHours / 3600
-                        LifeRemaining        = "{0}%" -f $drive.SSDEnduranceUtilizationPercentage
+                        ApplianceFQDN              = $fqdn
+                        ServerName                 = $server.Name
+                        ServerStatus               = $server.Status
+                        ServerPower                = $server.PowerState
+                        ServerSerialNumber         = $server.SerialNumber
+                        ServerModel                = $server.Model
+                        AdapterType                = $localStorageDetails.Data.AdapterType
+                        CurrentOperatingMode       = $localStorageDetails.Data.CurrentOperatingMode                 
+                        FirmwareVersion            = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
+                        InternalPortCount          = $localStorageDetails.Data.InternalPortCount
+                        Location                   = $localStorageDetails.Data.Location
+                        LocationFormat             = $localStorageDetails.Data.LocationFormat                      
+                        LogicalDriveNumbers        = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.LogicalDriveNumber }) -join ', '
+                        RaidValues                 = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.Raid }) -join ', '
+                        Model                      = $localStorageDetails.Data.Model
+                        Name                       = $localStorageDetails.Data.Name
+                        DriveBlockSizeBytes        = $drive.BlockSizeBytes
+                        LogicalCapacityGB          = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / (1024 * 1024 * 1024), 2)
+                        CapacityGBValues           = ($localStorageDetails.Data.PhysicalDrives | ForEach-Object { [math]::Round($_.CapacityMiB * 1024 / 1e6, 2) }) -join ', '
+                        DriveEncryptedDrive        = $drive.EncryptedDrive
+                        DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
+                        DriveInterfaceType         = $drive.InterfaceType
+                        DriveMediaType             = $drive.MediaType
+                        DriveLocation              = $drive.Location
+                        DriveModel                 = $drive.Model
+                        DriveSerialNumber          = $drive.SerialNumber
+                        DriveStatus                = $drive.Status.Health
+                        DriveState                 = $drive.Status.State
+                        "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
                     }
                     # Add the collected information to the data list
                     $data.Add($info)
