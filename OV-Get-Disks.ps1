@@ -1,4 +1,4 @@
-# Import the appropriate HPEOneView module (choose 660 or 800)
+# Import the appropriate HPEOneView module (choose 400, 660, or 800)
 Import-Module HPEOneView.660
 Import-Module ImportExcel
 # Get the full path of the current script
@@ -22,53 +22,38 @@ foreach ($appliance in $appliances) {
         # Get the server objects for Gen10 servers
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
         foreach ($server in $servers) {
-            # Construct the URI for local storage details
-            $localStorageUri = $server.uri + '/localStorage'
-            # Retrieve the local storage details (using Send-OVRequest)
-            $localStorageDetails = Send-OVRequest -Uri $localStorageUri -Method GET
+            # Construct the URI for local storage details (corrected)
+            $localStorageUri = $server.uri + '/localStorage'  
+            # Retrieve the local storage details (using Invoke-OVCommand)
+            $localStorageDetails = Invoke-OVCommand -uri $localStorageUri
             # Check if localStorageDetails is not null
             if ($null -ne $localStorageDetails) {
-                # Ensure serverName is always an array, even if it's just one value
-                $serverNames = @($server.name)
-                if ($serverNames -is [string]) {
-                    $serverNames = $serverNames -split ','
+                # Extract the necessary information
+                $info = [PSCustomObject]@{
+                    AdapterType               = $localStorageDetails.Data.AdapterType
+                    BackupPowerSourceStatus   = $localStorageDetails.Data.BackupPowerSourceStatus
+                    CacheMemorySizeMiB        = $localStorageDetails.Data.CacheMemorySizeMiB
+                    CurrentOperatingMode      = $localStorageDetails.Data.CurrentOperatingMode
+                    ExternalPortCount         = $localStorageDetails.Data.ExternalPortCount
+                    FirmwareVersion           = $localStorageDetails.Data.FirmwareVersion.Current
+                    InternalPortCount         = $localStorageDetails.Data.InternalPortCount
+                    Location                  = $localStorageDetails.Data.Location
+                    LocationFormat            = $localStorageDetails.Data.LocationFormat
+                    Model                     = $localStorageDetails.Data.Model
+                    Name                      = $localStorageDetails.Data.Name
+                    PhysicalDrives            = ($localStorageDetails.Data.PhysicalDrives | ForEach-Object {
+                        "{$_.BlockSizeBytes},{$_.CapacityLogicalBlocks},{$_.CapacityMiB},{$_.EncryptedDrive},{$_.FirmwareVersion},{$_.Location},{$_.Model},{$_.SerialNumber},{$_.Status}"
+                    }) -join ','
+                    SerialNumber               = $localStorageDetails.Data.SerialNumber
+                    Status                    = $localStorageDetails.Data.Status
                 }
-                # Iterate over each physical drive to create individual records
-                foreach ($drive in $localStorageDetails.PhysicalDrives) {
-                    foreach ($serverName in $serverNames) {  # Loop for each Servername value
-                        $info = [PSCustomObject]@{
-                            ApplianceFQDN             = $fqdn
-                            Servername                = $serverName.Trim()  # Remove extra spaces
-                            AdapterType               = $localStorageDetails.AdapterType
-                            CurrentOperatingMode      = $localStorageDetails.CurrentOperatingMode
-                            ExternalPortCount         = $localStorageDetails.ExternalPortCount
-                            FirmwareVersion           = $localStorageDetails.FirmwareVersion.Current
-                            InternalPortCount         = $localStorageDetails.InternalPortCount
-                            Location                  = $localStorageDetails.Location
-                            LocationFormat            = $localStorageDetails.LocationFormat
-                            Model                     = $localStorageDetails.Model
-                            Name                      = $localStorageDetails.Name
-                            SerialNumber               = $localStorageDetails.SerialNumber
-                            Status                    = $localStorageDetails.Status
-                            Drive_BlockSizeBytes       = $drive.BlockSizeBytes
-                            Drive_CapacityLogicalBlocks = $drive.CapacityLogicalBlocks
-                            Drive_CapacityMiB          = $drive.CapacityMiB
-                            Drive_EncryptedDrive       = $drive.EncryptedDrive
-                            Drive_FirmwareVersion      = $drive.FirmwareVersion
-                            Drive_Location            = $drive.Location
-                            Drive_Model               = $drive.Model
-                            Drive_SerialNumber        = $drive.SerialNumber
-                            Drive_Status              = $drive.Status
-                        }
-                        # Add the collected information to the data array
-                        $data += $info
-                    }  
-                }
+                # Add the collected information to the data array
+                $data += $info
             }
-        }
+        } 
     }
     catch {
-        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)"
+        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)" 
         Write-Warning $errorMessage
         $errorMessage | Add-Content -Path $logFile
     }
@@ -77,16 +62,8 @@ foreach ($appliance in $appliances) {
         Disconnect-OVMgmt
     }
 }
-# Export the collected data to a CSV file (check if there's data before exporting)
-if ($data) { 
-    $data | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
-} else {
-    Write-Warning "No data was collected to export to CSV."
-}
-# Export the collected data to an Excel file (check if there's data before exporting)
-if ($data) {
-    $data | Export-Excel -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.xlsx") -AutoSize
-} else {
-    Write-Warning "No data was collected to export to Excel."
-}
+# Export the collected data to a CSV file
+$data | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
+# Export the collected data to an Excel file
+$data | Export-Excel -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.xlsx") -AutoSize
 Write-Output "Audit completed and data exported to LocalStorageDetails.csv and LocalStorageDetails.xlsx"
