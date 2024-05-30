@@ -38,23 +38,32 @@ foreach ($appliance in $appliances) {
                         ServerSerialNumber   = $server.SerialNumber
                         ServerModel          = $server.Model
                         AdapterType          = $localStorageDetails.Data.AdapterType                 
-                        CacheMemorySizeMiB   = $localStorageDetails.Data.CacheMemorySizeMiB
+                        CacheMemorySizeMiB   = $localStorageDetails.Data.CacheMemorySizeMiB.Value
                         CurrentOperatingMode = $localStorageDetails.Data.CurrentOperatingMode
                         FirmwareVersion      = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
                         InternalPortCount    = $localStorageDetails.Data.InternalPortCount
                         Location             = $localStorageDetails.Data.Location
                         LocationFormat       = $localStorageDetails.Data.LocationFormat
+                        InterFaceType        = $localStorageDetails.Data.InterfaceType
+                        LogicalDriveNumber   = $localStorageDetails.Data.LogicalDriveNumber
+                        MediaType            = $localStorageDetails.Data.MediaType
+                        Raid            = $localStorageDetails.Data.Raid
                         Model                = $localStorageDetails.Data.Model
                         Name                 = $localStorageDetails.Data.Name
                         DriveBlockSizeBytes        = $drive.BlockSizeBytes
                         DriveCapacityLogicalBlocks = $drive.CapacityLogicalBlocks
                         DriveCapacityMiB           = $drive.CapacityMiB
                         DriveEncryptedDrive        = $drive.EncryptedDrive
-                        DriveFirmwareVersion       = $drive.FirmwareVersion
+                        DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
+                        DriveInterfaceType         = $drive.InterfaceType
+                        DriveMediaType             = $drive.MediaType
                         DriveLocation              = $drive.Location
                         DriveModel                 = $drive.Model
                         DriveSerialNumber          = $drive.SerialNumber
-                        DriveStatus                = $drive.Status
+                        DriveStatus                = $drive.Status.Health
+                        DriveState                 = $drive.Status.State
+                        PowerOnHours               = $drive.PowerOnHours
+                        SSDEnduranceUtilization    = $drive.SSDEnduranceUtilization
                         SerialNumber         = $localStorageDetails.Data.SerialNumber
                     }
                     $info | Add-Member -NotePropertyName Health -NotePropertyValue $localStorageDetails.Data.Status.Health
