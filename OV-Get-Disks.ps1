@@ -44,7 +44,10 @@ foreach ($appliance in $appliances) {
                         "{$_.BlockSizeBytes},{$_.CapacityLogicalBlocks},{$_.CapacityMiB},{$_.EncryptedDrive},{$_.FirmwareVersion},{$_.Location},{$_.Model},{$_.SerialNumber},{$_.Status}"
                     }) -join ','
                     SerialNumber               = $localStorageDetails.Data.SerialNumber
-                } + $localStorageDetails.Data.Status
+                }
+
+                $info | Add-Member -NotePropertyName Health -NotePropertyValue $localStorageDetails.Data.Status.Health
+                $info | Add-Member -NotePropertyName State -NotePropertyValue $localStorageDetails.Data.Status.State
                 # Add the collected information to the data list
                 $data.Add($info)
             }
