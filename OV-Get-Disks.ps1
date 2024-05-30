@@ -1,7 +1,5 @@
 [CmdletBinding()]
 Param (
-    [Parameter(Mandatory = $true, HelpMessage = "Filter by device interface (All, SAS, SATA, etc.). Defaults to All.")]
-    [string]$interfaceType = 'All',
     [Parameter(HelpMessage = "Filter by media type (All, SSD, HDD). Defaults to All.")]
     [string]$mediaType = 'All'
 )
@@ -10,13 +8,11 @@ Param (
 Function Get-DriveDetails {
     param (
         $drive,
-        $interfaceType,
         $mediaType
     )
     $data = @()
-    $interfaceFilter = ($interfaceType -eq 'All') -or ($drive.deviceInterface -eq $interfaceType)
     $mediaFilter = ($mediaType -eq 'All') -or ($drive.driveMedia -eq $mediaType)
-    if ($interfaceFilter -and $mediaFilter) {
+    if ($mediaFilter) {
         $sn = $drive.serialNumber
         if ($sn) {
             $interface = $drive.deviceInterface
@@ -45,14 +41,13 @@ Function Get-DriveDetails {
 Function Get-ServerInventory {
     param (
         $server,
-        $interfaceType,
         $mediaType
     )
     $inventory = @()
     $lStorageUri = $server.subResources.LocalStorage.uri
     $lStorage = Send-OVRequest -uri $lStorageUri
     foreach ($drive in $lStorage.data.PhysicalDrives) {
-        $inventory += Get-DriveDetails -drive $drive -interfaceType $interfaceType -mediaType $mediaType
+        $inventory += Get-DriveDetails -drive $drive -mediaType $mediaType
     }
     return $inventory
 }
@@ -70,20 +65,21 @@ $appliances = Import-Csv -Path $applianceListPath
 foreach ($appliance in $appliances) {
     $hostName = $appliance.Appliance_FQDN # Get FQDN from the column
 
+    # Prompt for credentials
+    $credentials = Get-Credential -Message "Please enter your OneView credentials for $hostName"
+
     $diskInventory = @("Server,serverModel,serverSN,Interface,MediaType,SerialNumber,firmware,ssdEnduranceUtilizationPercentage,powerOnHours")
 
     Write-Host -ForegroundColor Cyan "---- Connecting to OneView --> $hostName"
     try {
-        # Assuming you're using a service account with access to all appliances:
-        Connect-HPOVMgmt -Hostname $hostName -loginAcknowledge:$true 
-       
+        # Connect to OneView with the provided credentials
+        Connect-HPOVMgmt -Hostname $hostName -Credential $credentials -loginAcknowledge:$true 
 
         $outFile = "$hostName-$date-disk_Inventory.csv"
         $errorFile = "$hostName-$date-errors.txt"
 
         # Set Message (slightly improved clarity)
         $diskMessage = "disks"
-        if ($interfaceType -ne 'All') { $diskMessage += " with $interfaceType interface" }
         if ($mediaType -ne 'All') { $diskMessage += " and $mediaType media" }
 
         # Collect Server inventory
@@ -97,7 +93,7 @@ foreach ($appliance in $appliances) {
             $serverPrefix = "$sName,$sModel,$sSN"
 
             Write-Host "---- Collecting $diskMessage information on server ---> $sName"
-            $data = Get-ServerInventory -server $server -interfaceType $interfaceType -mediaType $mediaType
+            $data = Get-ServerInventory -server $server -mediaType $mediaType
 
             if ($data) {
                 $data = $data | ForEach-Object { "$serverPrefix,$_" }
