@@ -1,1 +1,32 @@
-WARNING: Error processing appliance MAR-D2-BH10-CP.adm.cm.par.emea.cib: Method invocation failed because [System.Management.Automation.PSObject] does not contain a method named 'op_Addition'.
+AdapterType                                   : SmartArray
+BackupPowerSourceStatus                       : NotPresent
+ControllerBoard                               : @{Status=}
+CurrentOperatingMode                          : Mixed
+DriveWriteCache                               : Disabled
+EncryptionCryptoOfficerPasswordSet            : False
+EncryptionCspTestPassed                       : True
+EncryptionEnabled                             : False
+EncryptionFwLocked                            : False
+EncryptionHasLockedVolumesMissingBootPassword : False
+EncryptionMixedVolumesEnabled                 : False
+EncryptionSelfTestPassed                      : True
+EncryptionStandaloneModeEnabled               : False
+ExternalPortCount                             : 0
+FirmwareVersion                               : @{Current=}
+InternalPortCount                             : 2
+Location                                      : Slot 0
+LocationFormat                                : PCISlot
+LogicalDrives                                 : {@{AccelerationMethod=None; CapacityMiB=457830; DataDrives=System.Object[]; InterfaceType=SATA; LegacyBootPriority=None; LogicalDriveEncryption=False;
+                                                LogicalDriveName=7380e983-6888-41cc-9449-332a855ed57e; LogicalDriveNumber=1; LogicalDriveStatusReasons=System.Object[]; LogicalDriveType=Data; MediaType=SSD; Raid=1; Status=;
+                                                StripeSizeBytes=262144; VolumeUniqueIdentifier=600508B1001C993DA66BFDB70D13C638}}
+Model                                         : HPE Smart Array E208i-c SR Gen10
+Name                                          : Hpe Smart Storage Array Controller
+PhysicalDrives                                : {@{BlockSizeBytes=512; CapacityLogicalBlocks=937703088; CapacityMiB=457862; DiskDriveStatusReasons=System.Object[]; DiskDriveUse=Data; EncryptedDrive=False; FirmwareVersion=;
+                                                InterfaceSpeedMbps=6000; InterfaceType=SATA; LegacyBootPriority=None; Location=1I:1:1; LocationFormat=ControllerPort:Box:Bay; MediaType=SSD; Model=VK000480GZXRF; PowerOnHours=5252;
+                                                SSDEnduranceUtilizationPercentage=0; SerialNumber=S6MPNA0T815063; Status=}, @{BlockSizeBytes=512; CapacityLogicalBlocks=937703088; CapacityMiB=457862;
+                                                DiskDriveStatusReasons=System.Object[]; DiskDriveUse=Data; EncryptedDrive=False; FirmwareVersion=; InterfaceSpeedMbps=6000; InterfaceType=SATA; LegacyBootPriority=None;
+                                                Location=1I:1:2; LocationFormat=ControllerPort:Box:Bay; MediaType=SSD; Model=VK000480GXAWK; PowerOnHours=5348; SSDEnduranceUtilizationPercentage=2; SerialNumber=2303404459F9;
+                                                Status=}}
+SerialNumber                                  : PFFTV0BRHAY074
+Status                                        : @{Health=OK; State=Enabled}
+StorageEnclosures                             : {@{DriveBayCount=4; FirmwareVersion=; Id=0; Location=1I:1; LocationFormat=Port:Box; Status=}}
