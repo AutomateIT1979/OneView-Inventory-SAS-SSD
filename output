@@ -1,1 +1,1 @@
-uri                 : /rest/server-hardware/39313738-3034-5A43-4A31-343230364638/localStorage
+Connect-OVMgmt: [Send-OVRequest]: The specified API version is not valid. Check the value of the X-API-Version header, then resend the request.
