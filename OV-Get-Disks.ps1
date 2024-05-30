@@ -24,7 +24,7 @@ Function Get-DriveDetails {
             $ph = $drive.PowerOnHours
             $powerOnHours = $ssdUsage = ""
             if ($media -eq 'SSD') {
-                $timeSpan = new-timespan -hours $ph
+                $timeSpan = New-TimeSpan -Hours $ph
                 $years = [math]::floor($timeSpan.Days / 365)
                 $months = [math]::floor(($timeSpan.Days % 365) / 30)
                 $days = ($timeSpan.Days % 365) % 30
@@ -32,7 +32,7 @@ Function Get-DriveDetails {
                 $powerOnHours = "$years years-$months months-$days days-$hours hours"
                 $ssdUsage = "$ssdPercentUsage%"
             }
-            $data += "$drive.Name,$interface,$media,$model,$sn,$fw,$ssdUsage,$powerOnHours"
+            $data += "$($drive.Name),$interface,$media,$model,$sn,$fw,$ssdUsage,$powerOnHours"
         }
     }
     return $data
@@ -46,7 +46,7 @@ Function Get-ServerInventory {
     )
     $inventory = @()
     $lStorageUri = $server.subResources.LocalStorage.uri
-    $lStorage = Send-OVRequest -uri $lStorageUri
+    $lStorage = Send-OVRequest -Uri $lStorageUri
     Write-Host "Local Storage Data: $($lStorage | Out-String)"
     foreach ($drive in $lStorage.data.PhysicalDrives) {
         $driveData = Get-DriveDetails -drive $drive -mediaType $mediaType
@@ -94,19 +94,21 @@ foreach ($appliance in $appliances) {
             $sName = $server.Name
             $sModel = $server.Model
             $sSN = $server.SerialNumber
-            $serverPrefix = "$sName,$sModel,$sSN"
+            $serverPrefix = "$($sName),$($sModel),$($sSN)"
 
-            Write-Host "---- Collecting $diskMessage information on server ---> $sName"
+            Write-Host "---- Collecting $diskMessage information on server ---> $($sName)"
             $data = Get-ServerInventory -server $server -mediaType $mediaType
 
             if ($data) {
                 $data = $data | ForEach-Object { "$serverPrefix,$_" }
+                Write-Host "Appending data for $($sName): $($data | Out-String)"
                 $diskInventory += $data
             } else {
-                Write-Host -ForegroundColor Yellow "------ No matching $diskMessage found on $sName...."
+                Write-Host -ForegroundColor Yellow "------ No matching $diskMessage found on $($sName)...."
             }
         }
 
+        Write-Host "Final disk inventory for $($hostName): $($diskInventory | Out-String)"
         $diskInventory | Out-File $outFile -Encoding UTF8
 
         Write-Host -ForegroundColor Cyan "Disk Inventory on server complete --> file: $outFile`n" 
