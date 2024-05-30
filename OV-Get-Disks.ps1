@@ -19,17 +19,13 @@ foreach ($appliance in $appliances) {
     try {
         # Connect to the OneView appliance
         Connect-OVMgmt -Hostname $fqdn -Credential $credential
-
         # Get the server objects for Gen10 servers
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
-
         foreach ($server in $servers) {
             # Construct the URI for local storage details
             $localStorageUri = $server.uri + '/localStorage'
-
             # Retrieve the local storage details (using Send-OVRequest)
             $localStorageDetails = Send-OVRequest -Uri $localStorageUri -Method GET
-
             # Check if localStorageDetails is not null
             if ($null -ne $localStorageDetails) {
                 # Ensure serverName is always an array, even if it's just one value
@@ -37,36 +33,32 @@ foreach ($appliance in $appliances) {
                 if ($serverNames -is [string]) {
                     $serverNames = $serverNames -split ','
                 }
-
                 # Iterate over each physical drive to create individual records
                 foreach ($drive in $localStorageDetails.PhysicalDrives) {
-                    foreach ($serverName in $serverNames) {
-                        # Loop for each Servername value
+                    foreach ($serverName in $serverNames) {  # Loop for each Servername value
                         $info = [PSCustomObject]@{
-                            ApplianceFQDN               = $fqdn
-                            Servername                  = $serverName.Trim()  # Remove extra spaces
-                            AdapterType                 = $localStorageDetails.AdapterType
-                            BackupPowerSourceStatus     = $localStorageDetails.BackupPowerSourceStatus
-                            CacheMemorySizeMiB          = $localStorageDetails.CacheMemorySizeMiB
-                            CurrentOperatingMode        = $localStorageDetails.CurrentOperatingMode
-                            ExternalPortCount           = $localStorageDetails.ExternalPortCount
-                            FirmwareVersion             = $localStorageDetails.FirmwareVersion.Current
-                            InternalPortCount           = $localStorageDetails.InternalPortCount
-                            Location                    = $localStorageDetails.Location
-                            LocationFormat              = $localStorageDetails.LocationFormat
-                            Model                       = $localStorageDetails.Model
-                            Name                        = $localStorageDetails.Name
-                            SerialNumber                = $localStorageDetails.SerialNumber
-                            Status                      = $localStorageDetails.Status
-                            Drive_BlockSizeBytes        = $drive.BlockSizeBytes
+                            ApplianceFQDN             = $fqdn
+                            Servername                = $serverName.Trim()  # Remove extra spaces
+                            AdapterType               = $localStorageDetails.AdapterType
+                            CurrentOperatingMode      = $localStorageDetails.CurrentOperatingMode
+                            ExternalPortCount         = $localStorageDetails.ExternalPortCount
+                            FirmwareVersion           = $localStorageDetails.FirmwareVersion.Current
+                            InternalPortCount         = $localStorageDetails.InternalPortCount
+                            Location                  = $localStorageDetails.Location
+                            LocationFormat            = $localStorageDetails.LocationFormat
+                            Model                     = $localStorageDetails.Model
+                            Name                      = $localStorageDetails.Name
+                            SerialNumber               = $localStorageDetails.SerialNumber
+                            Status                    = $localStorageDetails.Status
+                            Drive_BlockSizeBytes       = $drive.BlockSizeBytes
                             Drive_CapacityLogicalBlocks = $drive.CapacityLogicalBlocks
-                            Drive_CapacityMiB           = $drive.CapacityMiB
-                            Drive_EncryptedDrive        = $drive.EncryptedDrive
-                            Drive_FirmwareVersion       = $drive.FirmwareVersion
-                            Drive_Location              = $drive.Location
-                            Drive_Model                 = $drive.Model
-                            Drive_SerialNumber          = $drive.SerialNumber
-                            Drive_Status                = $drive.Status
+                            Drive_CapacityMiB          = $drive.CapacityMiB
+                            Drive_EncryptedDrive       = $drive.EncryptedDrive
+                            Drive_FirmwareVersion      = $drive.FirmwareVersion
+                            Drive_Location            = $drive.Location
+                            Drive_Model               = $drive.Model
+                            Drive_SerialNumber        = $drive.SerialNumber
+                            Drive_Status              = $drive.Status
                         }
                         # Add the collected information to the data array
                         $data += $info
@@ -85,8 +77,16 @@ foreach ($appliance in $appliances) {
         Disconnect-OVMgmt
     }
 }
-# Export the collected data to a CSV file
-$data | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
-# Export the collected data to an Excel file
-$data | Export-Excel -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.xlsx") -AutoSize
+# Export the collected data to a CSV file (check if there's data before exporting)
+if ($data) { 
+    $data | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
+} else {
+    Write-Warning "No data was collected to export to CSV."
+}
+# Export the collected data to an Excel file (check if there's data before exporting)
+if ($data) {
+    $data | Export-Excel -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.xlsx") -AutoSize
+} else {
+    Write-Warning "No data was collected to export to Excel."
+}
 Write-Output "Audit completed and data exported to LocalStorageDetails.csv and LocalStorageDetails.xlsx"
