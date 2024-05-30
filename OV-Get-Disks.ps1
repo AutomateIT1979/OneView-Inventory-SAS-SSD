@@ -21,51 +21,62 @@ foreach ($appliance in $appliances) {
         Connect-OVMgmt -Hostname $fqdn -Credential $credential
         # Get the server objects for Gen10 servers
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
+        $data = New-Object System.Collections.Generic.List[System.Object]
+
         foreach ($server in $servers) {
-            # Construct the URI for local storage details (corrected)
-            $localStorageUri = $server.uri + '/localStorage'  
-            # Retrieve the local storage details (using Send-OVRequest)
-            $localStorageDetails = Send-OVRequest -uri $localStorageUri
-            # Check if localStorageDetails is not null
-            if ($null -ne $localStorageDetails) {
-                # Extract the necessary information
-                $info = [PSCustomObject]@{
-                    ApplianceFQDN        = $fqdn
-                    ServerName           = $server.Name
-                    ServerStatus         = $server.Status
-                    ServerPower          = $server.Power
-                    ServerSerialNumber   = $server.SerialNumber
-                    ServerModel          = $server.Model
-                    AdapterType          = $localStorageDetails.Data.AdapterType                 
-                    CacheMemorySizeMiB   = $localStorageDetails.Data.CacheMemorySizeMiB
-                    CurrentOperatingMode = $localStorageDetails.Data.CurrentOperatingMode
-                    FirmwareVersion      = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
-                    InternalPortCount    = $localStorageDetails.Data.InternalPortCount
-                    Location             = $localStorageDetails.Data.Location
-                    LocationFormat       = $localStorageDetails.Data.LocationFormat
-                    Model                = $localStorageDetails.Data.Model
-                    Name                 = $localStorageDetails.Data.Name
-                    PhysicalDrives       = $localStorageDetails.Data.PhysicalDrives | ForEach-Object {
-                        [PSCustomObject]@{
-                            BlockSizeBytes        = $_.BlockSizeBytes
-                            CapacityLogicalBlocks = $_.CapacityLogicalBlocks
-                            CapacityMiB           = $_.CapacityMiB
-                            EncryptedDrive        = $_.EncryptedDrive
-                            FirmwareVersion       = $_.FirmwareVersion
-                            Location              = $_.Location
-                            Model                 = $_.Model
-                            SerialNumber          = $_.SerialNumber
-                            Status                = $_.Status
+            try {
+                # Construct the URI for local storage details (corrected)
+                $localStorageUri = $server.uri + '/localStorage'  
+                # Retrieve the local storage details (using Send-OVRequest)
+                $localStorageDetails = Send-OVRequest -uri $localStorageUri
+                # Check if localStorageDetails is not null
+                if ($null -ne $localStorageDetails) {
+                    foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
+                        # Extract the necessary information
+                        $info = [PSCustomObject]@{
+                            ApplianceFQDN        = $fqdn
+                            ServerName           = $server.Name
+                            ServerStatus         = $server.Status
+                            ServerPower          = $server.PowerState
+                            ServerSerialNumber   = $server.SerialNumber
+                            ServerModel          = $server.Model
+                            AdapterType          = $localStorageDetails.Data.AdapterType                 
+                            CacheMemorySizeMiB   = $localStorageDetails.Data.CacheMemorySizeMiB
+                            CurrentOperatingMode = $localStorageDetails.Data.CurrentOperatingMode
+                            FirmwareVersion      = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
+                            InternalPortCount    = $localStorageDetails.Data.InternalPortCount
+                            Location             = $localStorageDetails.Data.Location
+                            LocationFormat       = $localStorageDetails.Data.LocationFormat
+                            Model                = $localStorageDetails.Data.Model
+                            Name                 = $localStorageDetails.Data.Name
+                            DriveBlockSizeBytes        = $drive.BlockSizeBytes
+                            DriveCapacityLogicalBlocks = $drive.CapacityLogicalBlocks
+                            DriveCapacityMiB           = $drive.CapacityMiB
+                            DriveEncryptedDrive        = $drive.EncryptedDrive
+                            DriveFirmwareVersion       = $drive.FirmwareVersion
+                            DriveLocation              = $drive.Location
+                            DriveModel                 = $drive.Model
+                            DriveSerialNumber          = $drive.SerialNumber
+                            DriveStatus                = $drive.Status
+                            SerialNumber         = $localStorageDetails.Data.SerialNumber
                         }
+                        $info | Add-Member -NotePropertyName Health -NotePropertyValue $localStorageDetails.Data.Status.Health
+                        $info | Add-Member -NotePropertyName State -NotePropertyValue $localStorageDetails.Data.Status.State
+                        # Add the collected information to the data list
+                        $data.Add($info)
                     }
-                    SerialNumber         = $localStorageDetails.Data.SerialNumber
-                }
-                $info | Add-Member -NotePropertyName Health -NotePropertyValue $localStorageDetails.Data.Status.Health
-                $info | Add-Member -NotePropertyName State -NotePropertyValue $localStorageDetails.Data.Status.State
-                # Add the collected information to the data list
-                $data.Add($info)
+                } 
             }
-        } 
+            catch {
+                $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)" 
+                Write-Warning $errorMessage
+                $errorMessage | Add-Content -Path $logFile
+            }
+            finally {
+                # Always disconnect, even if an error occurs
+                Disconnect-OVMgmt
+            }
+        }
     }
     catch {
         $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)" 
