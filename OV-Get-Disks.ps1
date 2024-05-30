@@ -46,7 +46,6 @@ foreach ($appliance in $appliances) {
                         LogicalDriveNumbers        = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.LogicalDriveNumber }) -join ', '
                         RaidValues                 = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.Raid }) -join ', '
                         Model                      = $localStorageDetails.Data.Model
-                        Name                       = $localStorageDetails.Data.Name
                         DriveBlockSizeBytes        = $drive.BlockSizeBytes
                         # Calculate the logical capacity in GB
                         LogicalCapacityGB = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
