@@ -48,8 +48,8 @@ foreach ($appliance in $appliances) {
                         Model                      = $localStorageDetails.Data.Model
                         Name                       = $localStorageDetails.Data.Name
                         DriveBlockSizeBytes        = $drive.BlockSizeBytes
-                        LogicalCapacityGB          = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / (1024 * 1024 * 1024), 2)
-                        CapacityGBValues           = ($localStorageDetails.Data.PhysicalDrives | ForEach-Object { [math]::Round($_.CapacityMiB * 1024 / 1e6, 2) }) -join ', '
+                        # Calculate the logical capacity in GB
+                        LogicalCapacityGB = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
                         DriveEncryptedDrive        = $drive.EncryptedDrive
                         DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
                         DriveInterfaceType         = $drive.InterfaceType
