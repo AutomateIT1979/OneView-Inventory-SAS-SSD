@@ -72,9 +72,10 @@ foreach ($appliance in $appliances) {
     }
     finally {
         # Always disconnect, even if an error occurs
-        Disconnect-OVMgmt
     }
 }
+# Disconnect after all servers for a given appliance have been processed
+Disconnect-OVMgmt
 
 # Export the collected data to a CSV file
 $data | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
