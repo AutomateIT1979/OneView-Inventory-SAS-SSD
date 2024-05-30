@@ -57,7 +57,7 @@ $date = (Get-Date).ToString('MM_dd_yyyy')
 # Get the path to the current script directory
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
 # Construct the full path to the appliance list CSV file
-$applianceListPath = Join-Path $scriptPath "Appliance_Appliances_liste.csv"
+$applianceListPath = Join-Path $scriptPath "Appliances_liste.csv"
 
 # Read appliance FQDNs from CSV
 $appliances = Import-Csv -Path $applianceListPath
@@ -73,7 +73,7 @@ foreach ($appliance in $appliances) {
     Write-Host -ForegroundColor Cyan "---- Connecting to OneView --> $hostName"
     try {
         # Connect to OneView with the provided credentials
-        Connect-HPOVMgmt -Hostname $hostName -Credential $credentials -loginAcknowledge:$true 
+        Connect-OVMgmt -Hostname $hostName -Credential $credentials -loginAcknowledge:$true 
 
         $outFile = "$hostName-$date-disk_Inventory.csv"
         $errorFile = "$hostName-$date-errors.txt"
@@ -110,6 +110,6 @@ foreach ($appliance in $appliances) {
         Write-Host -ForegroundColor Red "Error: $_"
         $_ | Out-File -FilePath $errorFile -Append
     } finally {
-        Disconnect-HPOVMgmt
+        Disconnect-OVMgmt
     }
 }
