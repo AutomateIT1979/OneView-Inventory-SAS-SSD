@@ -12,6 +12,7 @@ Function Get-DriveDetails {
     )
     $data = @()
     $mediaFilter = ($mediaType -eq 'All') -or ($drive.driveMedia -eq $mediaType)
+    Write-Host "Processing drive: $($drive.Name) - Media Filter: $mediaFilter"
     if ($mediaFilter) {
         $sn = $drive.serialNumber
         if ($sn) {
@@ -31,7 +32,7 @@ Function Get-DriveDetails {
                 $powerOnHours = "$years years-$months months-$days days-$hours hours"
                 $ssdUsage = "$ssdPercentUsage%"
             }
-            $data += "$drive.Name,$interface,$media,$model,$sn,$fw,$ssdUsage,$powerOnHours" 
+            $data += "$drive.Name,$interface,$media,$model,$sn,$fw,$ssdUsage,$powerOnHours"
         }
     }
     return $data
@@ -46,8 +47,11 @@ Function Get-ServerInventory {
     $inventory = @()
     $lStorageUri = $server.subResources.LocalStorage.uri
     $lStorage = Send-OVRequest -uri $lStorageUri
+    Write-Host "Local Storage Data: $($lStorage | Out-String)"
     foreach ($drive in $lStorage.data.PhysicalDrives) {
-        $inventory += Get-DriveDetails -drive $drive -mediaType $mediaType
+        $driveData = Get-DriveDetails -drive $drive -mediaType $mediaType
+        Write-Host "Drive Data: $($driveData | Out-String)"
+        $inventory += $driveData
     }
     return $inventory
 }
@@ -83,7 +87,7 @@ foreach ($appliance in $appliances) {
         if ($mediaType -ne 'All') { $diskMessage += " and $mediaType media" }
 
         # Collect Server inventory
-        $serverList = Get-OVServer | Where-Object { $_.mpModel -notlike '*ilo3*' } 
+        $serverList = Get-OVServer | Where-Object { $_.mpModel -notlike '*ilo3*' }
 
         foreach ($server in $serverList) {
             $data = @()
