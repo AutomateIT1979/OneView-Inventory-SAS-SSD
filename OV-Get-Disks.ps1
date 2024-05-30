@@ -31,7 +31,16 @@ Function Get-DriveDetails {
                 $powerOnHours = "$years years-$months months-$days days-$hours hours"
                 $ssdUsage = "$ssdPercentUsage%"
             }
-            $data += "$($drive.Name),$interface,$media,$model,$sn,$fw,$ssdUsage,$powerOnHours"
+            $data = [PSCustomObject]@{
+                Name = $drive.Name
+                Interface = $interface
+                MediaType = $media
+                Model = $model
+                SerialNumber = $sn
+                Firmware = $fw
+                SSDUsage = $ssdUsage
+                PowerOnHours = $powerOnHours
+            }
         }
     }
     return $data
@@ -48,7 +57,9 @@ Function Get-ServerInventory {
     $lStorage = Send-OVRequest -Uri $lStorageUri
     foreach ($drive in $lStorage.data.PhysicalDrives) {
         $driveData = Get-DriveDetails -drive $drive -mediaType $mediaType
-        $inventory += $driveData
+        if ($driveData) {
+            $inventory += $driveData
+        }
     }
     return $inventory
 }
@@ -69,7 +80,7 @@ foreach ($appliance in $appliances) {
     # Prompt for credentials
     $credentials = Get-Credential -Message "Please enter your OneView credentials for $hostName"
 
-    $diskInventory = @("Server,serverModel,serverSN,Interface,MediaType,SerialNumber,firmware,ssdEnduranceUtilizationPercentage,powerOnHours")
+    $diskInventory = @()
 
     try {
         # Connect to OneView with the provided credentials
@@ -78,29 +89,35 @@ foreach ($appliance in $appliances) {
         $outFile = "$hostName-$date-disk_Inventory.csv"
         $errorFile = "$hostName-$date-errors.txt"
 
-        # Set Message (slightly improved clarity)
-        $diskMessage = "disks"
-        if ($mediaType -ne 'All') { $diskMessage += " and $mediaType media" }
-
         # Collect Server inventory
         $serverList = Get-OVServer | Where-Object { $_.mpModel -notlike '*ilo3*' }
 
         foreach ($server in $serverList) {
-            $data = @()
             $sName = $server.Name
             $sModel = $server.Model
             $sSN = $server.SerialNumber
-            $serverPrefix = "$($sName),$($sModel),$($sSN)"
 
-            $data = Get-ServerInventory -server $server -mediaType $mediaType
+            $serverInventory = Get-ServerInventory -server $server -mediaType $mediaType
 
-            if ($data) {
-                $data = $data | ForEach-Object { "$serverPrefix,$_" }
-                $diskInventory += $data
+            foreach ($drive in $serverInventory) {
+                $driveDetails = [PSCustomObject]@{
+                    ServerName = $sName
+                    ServerModel = $sModel
+                    ServerSerialNumber = $sSN
+                    DriveName = $drive.Name
+                    Interface = $drive.Interface
+                    MediaType = $drive.MediaType
+                    Model = $drive.Model
+                    SerialNumber = $drive.SerialNumber
+                    Firmware = $drive.Firmware
+                    SSDUsage = $drive.SSDUsage
+                    PowerOnHours = $drive.PowerOnHours
+                }
+                $diskInventory += $driveDetails
             }
         }
 
-        $diskInventory | Out-File $outFile -Encoding UTF8
+        $diskInventory | Export-Csv -Path $outFile -NoTypeInformation -Encoding UTF8
 
     } catch {
         $_ | Out-File -FilePath $errorFile -Append
