@@ -22,30 +22,32 @@ foreach ($appliance in $appliances) {
         # Get the server objects for Gen10 servers
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
         foreach ($server in $servers) {
-            # Construct the URI for local storage details (corrected)
+            # Construct the URI for local storage details
             $localStorageUri = $server.uri + '/localStorage'
-            # Retrieve the local storage details (using Invoke-OVCommand)
-            $localStorageDetails = Invoke-OVCommand -uri $localStorageUri
+            # Retrieve the local storage details (using Send-OVRequest)
+            $localStorageDetails = Send-OVRequest -Uri $localStorageUri -Method GET
             # Check if localStorageDetails is not null
             if ($null -ne $localStorageDetails) {
+                # Split the Servername values
+                $serverNames = $server.name -split ','
                 # Iterate over each physical drive to create individual records
-                foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
+                foreach ($drive in $localStorageDetails.PhysicalDrives) {
                     $info = [PSCustomObject]@{
                         ApplianceFQDN             = $fqdn
-                        Servername                = $server.name
-                        AdapterType               = $localStorageDetails.Data.AdapterType
-                        BackupPowerSourceStatus   = $localStorageDetails.Data.BackupPowerSourceStatus
-                        CacheMemorySizeMiB        = $localStorageDetails.Data.CacheMemorySizeMiB
-                        CurrentOperatingMode      = $localStorageDetails.Data.CurrentOperatingMode
-                        ExternalPortCount         = $localStorageDetails.Data.ExternalPortCount
-                        FirmwareVersion           = $localStorageDetails.Data.FirmwareVersion.Current
-                        InternalPortCount         = $localStorageDetails.Data.InternalPortCount
-                        Location                  = $localStorageDetails.Data.Location
-                        LocationFormat            = $localStorageDetails.Data.LocationFormat
-                        Model                     = $localStorageDetails.Data.Model
-                        Name                      = $localStorageDetails.Data.Name
-                        SerialNumber               = $localStorageDetails.Data.SerialNumber
-                        Status                    = $localStorageDetails.Data.Status
+                        Servername                = $serverNames # Use the split Servername values
+                        AdapterType               = $localStorageDetails.AdapterType
+                        BackupPowerSourceStatus   = $localStorageDetails.BackupPowerSourceStatus
+                        CacheMemorySizeMiB        = $localStorageDetails.CacheMemorySizeMiB
+                        CurrentOperatingMode      = $localStorageDetails.CurrentOperatingMode
+                        ExternalPortCount         = $localStorageDetails.ExternalPortCount
+                        FirmwareVersion           = $localStorageDetails.FirmwareVersion.Current
+                        InternalPortCount         = $localStorageDetails.InternalPortCount
+                        Location                  = $localStorageDetails.Location
+                        LocationFormat            = $localStorageDetails.LocationFormat
+                        Model                     = $localStorageDetails.Model
+                        Name                      = $localStorageDetails.Name
+                        SerialNumber               = $localStorageDetails.SerialNumber
+                        Status                    = $localStorageDetails.Status
                         Drive_BlockSizeBytes       = $drive.BlockSizeBytes
                         Drive_CapacityLogicalBlocks = $drive.CapacityLogicalBlocks
                         Drive_CapacityMiB          = $drive.CapacityMiB
