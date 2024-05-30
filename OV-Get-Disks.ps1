@@ -10,7 +10,7 @@ Function Get-DriveDetails {
         $drive,
         $mediaType
     )
-    $data = @()
+    $data = $null
     $mediaFilter = ($mediaType -eq 'All') -or ($drive.driveMedia -eq $mediaType)
     if ($mediaFilter) {
         $sn = $drive.serialNumber
@@ -21,7 +21,8 @@ Function Get-DriveDetails {
             $fw = $drive.firmwareVersion
             $ssdPercentUsage = [int]$drive.SSDEnduranceUtilizationPercentage
             $ph = $drive.PowerOnHours
-            $powerOnHours = $ssdUsage = ""
+            $powerOnHours = ""
+            $ssdUsage = ""
             if ($media -eq 'SSD') {
                 $timeSpan = New-TimeSpan -Hours $ph
                 $years = [math]::floor($timeSpan.Days / 365)
@@ -55,9 +56,11 @@ Function Get-ServerInventory {
     $inventory = @()
     $lStorageUri = $server.subResources.LocalStorage.uri
     $lStorage = Send-OVRequest -Uri $lStorageUri
+    Write-Host "Local Storage Data for $($server.Name): $($lStorage | Out-String)"
     foreach ($drive in $lStorage.data.PhysicalDrives) {
         $driveData = Get-DriveDetails -drive $drive -mediaType $mediaType
         if ($driveData) {
+            Write-Host "Drive Data for $($drive.Name): $($driveData | Out-String)"
             $inventory += $driveData
         }
     }
@@ -113,13 +116,16 @@ foreach ($appliance in $appliances) {
                     SSDUsage = $drive.SSDUsage
                     PowerOnHours = $drive.PowerOnHours
                 }
+                Write-Host "Collected Drive Details: $($driveDetails | Out-String)"
                 $diskInventory += $driveDetails
             }
         }
 
         $diskInventory | Export-Csv -Path $outFile -NoTypeInformation -Encoding UTF8
+        Write-Host "Disk inventory successfully written to $outFile"
 
     } catch {
+        Write-Host -ForegroundColor Red "Error: $_"
         $_ | Out-File -FilePath $errorFile -Append
     } finally {
         Disconnect-OVMgmt
