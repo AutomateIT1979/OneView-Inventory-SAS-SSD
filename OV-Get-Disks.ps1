@@ -31,25 +31,24 @@ foreach ($appliance in $appliances) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     # Extract the necessary information
                     $info = [PSCustomObject]@{
-                        ApplianceFQDN        = $fqdn
-                        ServerName           = $server.Name
-                        ServerStatus         = $server.Status
-                        ServerPower          = $server.PowerState
-                        ServerSerialNumber   = $server.SerialNumber
-                        ServerModel          = $server.Model
-                        AdapterType          = $localStorageDetails.Data.AdapterType                 
-                        CacheMemorySizeMiB   = $localStorageDetails.Data.CacheMemorySizeMiB.Value
-                        CurrentOperatingMode = $localStorageDetails.Data.CurrentOperatingMode
-                        FirmwareVersion      = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
-                        InternalPortCount    = $localStorageDetails.Data.InternalPortCount
-                        Location             = $localStorageDetails.Data.Location
-                        LocationFormat       = $localStorageDetails.Data.LocationFormat
-                        InterFaceType        = $localStorageDetails.Data.InterfaceType
-                        LogicalDriveNumber   = $localStorageDetails.Data.LogicalDriveNumber
-                        MediaType            = $localStorageDetails.Data.MediaType
-                        Raid            = $localStorageDetails.Data.Raid
-                        Model                = $localStorageDetails.Data.Model
-                        Name                 = $localStorageDetails.Data.Name
+                        ApplianceFQDN              = $fqdn
+                        ServerName                 = $server.Name
+                        ServerStatus               = $server.Status
+                        ServerPower                = $server.PowerState
+                        ServerSerialNumber         = $server.SerialNumber
+                        ServerModel                = $server.Model
+                        AdapterType                = $localStorageDetails.Data.AdapterType
+                        CurrentOperatingMode       = $localStorageDetails.Data.CurrentOperatingMode                 
+                        FirmwareVersion            = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
+                        InternalPortCount          = $localStorageDetails.Data.InternalPortCount
+                        Location                   = $localStorageDetails.Data.Location
+                        CacheMemorySizeMiB         = $localStorageDetails.Data.CacheMemorySizeMiB.Value
+                        LocationFormat             = $localStorageDetails.Data.LocationFormat                      
+                        LogicalDriveNumber         = $localStorageDetails.Data.LogicalDriveNumber
+                        MediaType                  = $localStorageDetails.Data.MediaType
+                        Raid                       = $localStorageDetails.Data.Raid
+                        Model                      = $localStorageDetails.Data.Model
+                        Name                       = $localStorageDetails.Data.Name
                         DriveBlockSizeBytes        = $drive.BlockSizeBytes
                         DriveCapacityLogicalBlocks = $drive.CapacityLogicalBlocks
                         DriveCapacityMiB           = $drive.CapacityMiB
@@ -64,7 +63,7 @@ foreach ($appliance in $appliances) {
                         DriveState                 = $drive.Status.State
                         PowerOnHours               = $drive.PowerOnHours
                         SSDEnduranceUtilization    = $drive.SSDEnduranceUtilization
-                        SerialNumber         = $localStorageDetails.Data.SerialNumber
+                        SerialNumber               = $localStorageDetails.Data.SerialNumber
                     }
                     $info | Add-Member -NotePropertyName Health -NotePropertyValue $localStorageDetails.Data.Status.Health
                     $info | Add-Member -NotePropertyName State -NotePropertyValue $localStorageDetails.Data.Status.State
@@ -85,7 +84,6 @@ foreach ($appliance in $appliances) {
 }
 # Disconnect after all servers for a given appliance have been processed
 Disconnect-OVMgmt
-
 # Export the collected data to a CSV file
 $data | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
 # Export the collected data to an Excel file
