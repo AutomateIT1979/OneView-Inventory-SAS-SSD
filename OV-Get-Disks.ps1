@@ -1,5 +1,5 @@
 # Import the appropriate HPEOneView module (choose 660 or 800)
-Import-Module HPEOneView.800
+Import-Module HPEOneView.660
 Import-Module ImportExcel
 
 # Get the full path of the current script
@@ -32,31 +32,31 @@ foreach ($appliance in $appliances) {
 
         foreach ($server in $servers) {
             # Construct the URI for local storage details (corrected)
-            $localStorageUri = "${server.uri}/localStorage"
+            $localStorageUri = $server.uri + '/localStorage'  
 
-            # Retrieve the local storage details
-            $localStorageDetails = Send-OVRequest -Uri $localStorageUri -Method GET
+            # Retrieve the local storage details (using Invoke-OVCommand)
+            $localStorageDetails = Invoke-OVCommand -uri $localStorageUri
 
             # Check if localStorageDetails is not null
             if ($null -ne $localStorageDetails) {
                 # Extract the necessary information
                 $info = [PSCustomObject]@{
-                    AdapterType               = $localStorageDetails.AdapterType
-                    BackupPowerSourceStatus   = $localStorageDetails.BackupPowerSourceStatus
-                    CacheMemorySizeMiB        = $localStorageDetails.CacheMemorySizeMiB
-                    CurrentOperatingMode      = $localStorageDetails.CurrentOperatingMode
-                    ExternalPortCount         = $localStorageDetails.ExternalPortCount
-                    FirmwareVersion           = $localStorageDetails.FirmwareVersion.Current
-                    InternalPortCount         = $localStorageDetails.InternalPortCount
-                    Location                  = $localStorageDetails.Location
-                    LocationFormat            = $localStorageDetails.LocationFormat
-                    Model                     = $localStorageDetails.Model
-                    Name                      = $localStorageDetails.Name
-                    PhysicalDrives            = ($localStorageDetails.PhysicalDrives | ForEach-Object {
+                    AdapterType               = $localStorageDetails.Data.AdapterType
+                    BackupPowerSourceStatus   = $localStorageDetails.Data.BackupPowerSourceStatus
+                    CacheMemorySizeMiB        = $localStorageDetails.Data.CacheMemorySizeMiB
+                    CurrentOperatingMode      = $localStorageDetails.Data.CurrentOperatingMode
+                    ExternalPortCount         = $localStorageDetails.Data.ExternalPortCount
+                    FirmwareVersion           = $localStorageDetails.Data.FirmwareVersion.Current
+                    InternalPortCount         = $localStorageDetails.Data.InternalPortCount
+                    Location                  = $localStorageDetails.Data.Location
+                    LocationFormat            = $localStorageDetails.Data.LocationFormat
+                    Model                     = $localStorageDetails.Data.Model
+                    Name                      = $localStorageDetails.Data.Name
+                    PhysicalDrives            = ($localStorageDetails.Data.PhysicalDrives | ForEach-Object {
                         "{$_.BlockSizeBytes},{$_.CapacityLogicalBlocks},{$_.CapacityMiB},{$_.EncryptedDrive},{$_.FirmwareVersion},{$_.Location},{$_.Model},{$_.SerialNumber},{$_.Status}"
                     }) -join ','
-                    SerialNumber               = $localStorageDetails.SerialNumber
-                    Status                    = $localStorageDetails.Status
+                    SerialNumber               = $localStorageDetails.Data.SerialNumber
+                    Status                    = $localStorageDetails.Data.Status
                 }
 
                 # Add the collected information to the data array
@@ -65,7 +65,7 @@ foreach ($appliance in $appliances) {
         } 
     }
     catch {
-        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)"  # Corrected error message
+        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)" 
         Write-Warning $errorMessage
         $errorMessage | Add-Content -Path $logFile
     }
