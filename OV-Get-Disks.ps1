@@ -63,10 +63,7 @@ foreach ($appliance in $appliances) {
                         DriveState                 = $drive.Status.State
                         PowerOnHours               = $drive.PowerOnHours
                         SSDEnduranceUtilization    = $drive.SSDEnduranceUtilization
-                        SerialNumber               = $localStorageDetails.Data.SerialNumber
                     }
-                    $info | Add-Member -NotePropertyName Health -NotePropertyValue $localStorageDetails.Data.Status.Health
-                    $info | Add-Member -NotePropertyName State -NotePropertyValue $localStorageDetails.Data.Status.State
                     # Add the collected information to the data list
                     $data.Add($info)
                 }
