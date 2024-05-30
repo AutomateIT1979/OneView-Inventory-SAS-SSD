@@ -33,38 +33,41 @@ foreach ($appliance in $appliances) {
         # Retrieve the local storage details
         $localStorageDetails = Send-OVRequest -Uri $localStorageUri -Method GET
 
-        # Extract the necessary information
-        $info = [PSCustomObject]@{
-            AdapterType                                   = $localStorageDetails.AdapterType
-            BackupPowerSourceStatus                       = $localStorageDetails.BackupPowerSourceStatus
-            CacheMemorySizeMiB                            = $localStorageDetails.CacheMemorySizeMiB
-            CurrentOperatingMode                          = $localStorageDetails.CurrentOperatingMode
-            ExternalPortCount                             = $localStorageDetails.ExternalPortCount
-            FirmwareVersion                               = $localStorageDetails.FirmwareVersion.Current
-            InternalPortCount                             = $localStorageDetails.InternalPortCount
-            Location                                      = $localStorageDetails.Location
-            LocationFormat                                = $localStorageDetails.LocationFormat
-            Model                                         = $localStorageDetails.Model
-            Name                                          = $localStorageDetails.Name
-            PhysicalDrives                                = ($localStorageDetails.PhysicalDrives | ForEach-Object {
-                [PSCustomObject]@{
-                    BlockSizeBytes       = $_.BlockSizeBytes
-                    CapacityLogicalBlocks = $_.CapacityLogicalBlocks
-                    CapacityMiB          = $_.CapacityMiB
-                    EncryptedDrive       = $_.EncryptedDrive
-                    FirmwareVersion      = $_.FirmwareVersion
-                    Location             = $_.Location
-                    Model                = $_.Model
-                    SerialNumber         = $_.SerialNumber
-                    Status               = $_.Status
-                }
-            })
-            SerialNumber                                  = $localStorageDetails.SerialNumber
-            Status                                        = $localStorageDetails.Status
-        }
+        # Check if localStorageDetails is not null
+        if ($null -ne $localStorageDetails) {
+            # Extract the necessary information
+            $info = [PSCustomObject]@{
+                AdapterType                                   = $localStorageDetails.AdapterType
+                BackupPowerSourceStatus                       = $localStorageDetails.BackupPowerSourceStatus
+                CacheMemorySizeMiB                            = $localStorageDetails.CacheMemorySizeMiB
+                CurrentOperatingMode                          = $localStorageDetails.CurrentOperatingMode
+                ExternalPortCount                             = $localStorageDetails.ExternalPortCount
+                FirmwareVersion                               = $localStorageDetails.FirmwareVersion.Current
+                InternalPortCount                             = $localStorageDetails.InternalPortCount
+                Location                                      = $localStorageDetails.Location
+                LocationFormat                                = $localStorageDetails.LocationFormat
+                Model                                         = $localStorageDetails.Model
+                Name                                          = $localStorageDetails.Name
+                PhysicalDrives                                = ($localStorageDetails.PhysicalDrives | ForEach-Object {
+                    [PSCustomObject]@{
+                        BlockSizeBytes       = $_.BlockSizeBytes
+                        CapacityLogicalBlocks = $_.CapacityLogicalBlocks
+                        CapacityMiB          = $_.CapacityMiB
+                        EncryptedDrive       = $_.EncryptedDrive
+                        FirmwareVersion      = $_.FirmwareVersion
+                        Location             = $_.Location
+                        Model                = $_.Model
+                        SerialNumber         = $_.SerialNumber
+                        Status               = $_.Status
+                    }
+                })
+                SerialNumber                                  = $localStorageDetails.SerialNumber
+                Status                                        = $localStorageDetails.Status
+            }
 
-        # Add the collected information to the data array
-        $data += $info
+            # Add the collected information to the data array
+            $data += $info
+        }
     }
 
     # Disconnect from the OneView appliance
