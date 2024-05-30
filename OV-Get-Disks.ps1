@@ -12,7 +12,6 @@ Function Get-DriveDetails {
     )
     $data = @()
     $mediaFilter = ($mediaType -eq 'All') -or ($drive.driveMedia -eq $mediaType)
-    Write-Host "Processing drive: $($drive.Name) - Media Filter: $mediaFilter"
     if ($mediaFilter) {
         $sn = $drive.serialNumber
         if ($sn) {
@@ -47,10 +46,8 @@ Function Get-ServerInventory {
     $inventory = @()
     $lStorageUri = $server.subResources.LocalStorage.uri
     $lStorage = Send-OVRequest -Uri $lStorageUri
-    Write-Host "Local Storage Data: $($lStorage | Out-String)"
     foreach ($drive in $lStorage.data.PhysicalDrives) {
         $driveData = Get-DriveDetails -drive $drive -mediaType $mediaType
-        Write-Host "Drive Data: $($driveData | Out-String)"
         $inventory += $driveData
     }
     return $inventory
@@ -74,7 +71,6 @@ foreach ($appliance in $appliances) {
 
     $diskInventory = @("Server,serverModel,serverSN,Interface,MediaType,SerialNumber,firmware,ssdEnduranceUtilizationPercentage,powerOnHours")
 
-    Write-Host -ForegroundColor Cyan "---- Connecting to OneView --> $hostName"
     try {
         # Connect to OneView with the provided credentials
         Connect-OVMgmt -Hostname $hostName -Credential $credentials -loginAcknowledge:$true 
@@ -96,24 +92,17 @@ foreach ($appliance in $appliances) {
             $sSN = $server.SerialNumber
             $serverPrefix = "$($sName),$($sModel),$($sSN)"
 
-            Write-Host "---- Collecting $diskMessage information on server ---> $($sName)"
             $data = Get-ServerInventory -server $server -mediaType $mediaType
 
             if ($data) {
                 $data = $data | ForEach-Object { "$serverPrefix,$_" }
-                Write-Host "Appending data for $($sName): $($data | Out-String)"
                 $diskInventory += $data
-            } else {
-                Write-Host -ForegroundColor Yellow "------ No matching $diskMessage found on $($sName)...."
             }
         }
 
-        Write-Host "Final disk inventory for $($hostName): $($diskInventory | Out-String)"
         $diskInventory | Out-File $outFile -Encoding UTF8
 
-        Write-Host -ForegroundColor Cyan "Disk Inventory on server complete --> file: $outFile`n" 
     } catch {
-        Write-Host -ForegroundColor Red "Error: $_"
         $_ | Out-File -FilePath $errorFile -Append
     } finally {
         Disconnect-OVMgmt
