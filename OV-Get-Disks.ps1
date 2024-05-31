@@ -31,10 +31,15 @@ foreach ($appliance in $appliances) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     # Extract the necessary information
                     $info = [PSCustomObject]@{
+                        # Server information (from the server object) and local storage details (from localStorageDetails)
                         ApplianceFQDN              = $fqdn
                         ServerName                 = $server.Name
                         ServerStatus               = $server.Status
                         ServerPower                = $server.PowerState
+                        ProcessorCoreCount         = $server.ProcessorCoreCount
+                        ProcessorCount             = $server.ProcessorCount
+                        ProcessorSpeedMhz          = $server.ProcessorSpeedMhz
+                        ProcessorType              = $server.ProcessorType
                         ServerSerialNumber         = $server.SerialNumber
                         ServerModel                = $server.Model
                         AdapterType                = $localStorageDetails.Data.AdapterType
@@ -55,9 +60,13 @@ foreach ($appliance in $appliances) {
                         DriveMediaType             = $drive.MediaType
                         DriveLocation              = $drive.Location
                         DriveModel                 = $drive.Model
+                        # Get the drive serial number
                         DriveSerialNumber          = $drive.SerialNumber
+                        # Get the drive status (health)
                         DriveStatus                = $drive.Status.Health
+                        # Get the drive state
                         DriveState                 = $drive.Status.State
+                        # Show the remaining life of the SSD in percentage
                         "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
                     }
                     # Add the collected information to the data list
