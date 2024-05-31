@@ -9,25 +9,25 @@ $credential = Get-Credential -Message "Enter OneView credentials"
 $data = [System.Collections.Generic.List[object]]::new()
 $logFile = Join-Path $scriptPath "error_log.txt"
 
+# Connect to all appliances first
 foreach ($appliance in $appliances) {
     $fqdn = $appliance.Appliance_FQDN
-    
-    # Check if already connected to this appliance
-    $existingConnection = $Global:ConnectedSessions | Where-Object { $_.Name -eq $fqdn }
-
-    if (-not $existingConnection) {  # Connect only if not already connected
-        try {
-            Connect-OVMgmt -Hostname $fqdn -Credential $credential
-        }
-        catch {
-            $errorMessage = "Error connecting to appliance ${fqdn}: $($_.Exception.Message)"
-            Write-Warning $errorMessage
-            $errorMessage | Add-Content $logFile
-            continue  # Skip to the next appliance if connection fails
-        }
-    }
 
     try {
+        Connect-OVMgmt -Hostname $fqdn -Credential $credential
+    }
+    catch {
+        $errorMessage = "Error connecting to appliance ${fqdn}: $($_.Exception.Message)"
+        Write-Warning $errorMessage
+        $errorMessage | Add-Content $logFile
+        continue  # Skip to the next appliance if connection fails
+    }
+}
+
+# Now, get information from all connected appliances
+foreach ($connection in $Global:ConnectedSessions) {  # Iterate over established connections
+    try {
+        Set-OVApplianceConnection $connection  # Set the current connection as the target
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
 
         foreach ($server in $servers) {
@@ -37,7 +37,7 @@ foreach ($appliance in $appliances) {
             if ($localStorageDetails) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     $info = [PSCustomObject]@{
-                        ApplianceFQDN             = $fqdn
+                        ApplianceFQDN             = $connection.Name  # Get the appliance name from the connection object
                         ServerName               = $server.Name -split ', ' | Select-Object -First 1
                         BayNumber                = $server.Name -split ', ' | Select-Object -Last 1
                         ServerStatus             = $server.Status
@@ -76,14 +76,14 @@ foreach ($appliance in $appliances) {
         }
     }
     catch {
-        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)"
+        $errorMessage = "Error processing appliance $($connection.Name): $($_.Exception.Message)"
         Write-Warning $errorMessage
         $errorMessage | Add-Content $logFile
     }
-    finally {
-        # No explicit disconnect needed. The HPE OneView PowerShell module handles disconnections automatically.
-    }
 }
+
+# Disconnect from all appliances
+Disconnect-OVMgmt -AllConnections
 
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, BayNumber -Descending
 $sortedData | Export-Csv (Join-Path $scriptPath "LocalStorageDetails.csv") -NoTypeInformation
