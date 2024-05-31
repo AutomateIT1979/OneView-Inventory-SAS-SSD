@@ -1,35 +1,29 @@
-# Import the appropriate HPEOneView module (choose 400, 660, or 800)
 Import-Module HPEOneView.660
 Import-Module ImportExcel
-# Get the full path of the current script
+
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
-# Path to the CSV file containing appliance FQDNs (relative to the script)
-$csvPath = Join-Path -Path $scriptPath -ChildPath "Appliances_liste.csv"
-# Read the appliances list from the CSV file
-$appliances = Import-Csv -Path $csvPath
-# Prompt the user for OneView credentials
+$csvPath = Join-Path $scriptPath "Appliances_liste.csv"
+$appliances = Import-Csv $csvPath
+
 $credential = Get-Credential -Message "Enter OneView credentials"
-# Initialize a list to hold the collected data
-$data = New-Object System.Collections.Generic.List[object]
-# Log file for errors
-$logFile = Join-Path -Path $scriptPath -ChildPath "error_log.txt"
-# Loop through each appliance and retrieve the required information
+$data = [System.Collections.Generic.List[object]]::new()
+$logFile = Join-Path $scriptPath "error_log.txt"
+
 foreach ($appliance in $appliances) {
     $fqdn = $appliance.Appliance_FQDN
+
     try {
         # Connect to the OneView appliance
         Connect-OVMgmt -Hostname $fqdn -Credential $credential
-        # Get the server objects for Gen10 servers
+
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
+
         foreach ($server in $servers) {
-            # Construct the URI for local storage details (corrected)
-            $localStorageUri = $server.uri + '/localStorage'  
-            # Retrieve the local storage details (using Send-OVRequest)
+            $localStorageUri = $server.uri + '/localStorage'
             $localStorageDetails = Send-OVRequest -uri $localStorageUri
-            # Check if localStorageDetails is not null
-            if ($null -ne $localStorageDetails) {
+           
+            if ($localStorageDetails) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
-                    # Extract the necessary information
                     $info = [PSCustomObject]@{
                         # Server information (from the server object) and local storage details (from localStorageDetails)
                         ApplianceFQDN              = $fqdn
@@ -54,7 +48,7 @@ foreach ($appliance in $appliances) {
                         Model                      = $localStorageDetails.Data.Model
                         DriveBlockSizeBytes        = $drive.BlockSizeBytes
                         # Calculate the logical capacity in GB
-                        LogicalCapacityGB = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
+                        LogicalCapacityGB          = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
                         DriveEncryptedDrive        = $drive.EncryptedDrive
                         DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
                         DriveInterfaceType         = $drive.InterfaceType
@@ -70,27 +64,23 @@ foreach ($appliance in $appliances) {
                         # Show the remaining life of the SSD in percentage
                         "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
                     }
-                    # Add the collected information to the data list
-                    $data.Add($info)
+                    $data.Add($info) 
                 }
             }
         }
     }
     catch {
-        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)" 
+        $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)"
         Write-Warning $errorMessage
-        $errorMessage | Add-Content -Path $logFile
+        $errorMessage | Add-Content $logFile
     }
     finally {
-        # Always disconnect, even if an error occurs
-    }
+        # Always disconnect after processing each appliance
+        Disconnect-OVMgmt
+    } 
 }
-# Disconnect after all servers for a given appliance have been processed
-Disconnect-OVMgmt
-# Sort the collected data by ApplianceFQDN and BayNumber
+
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, BayNumber -Descending
-# Export the collected data to a CSV file
-$sortedData | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
-# Export the collected data to an Excel file
-$sortedData | Export-Excel -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.xlsx") -AutoSize
+$sortedData | Export-Csv (Join-Path $scriptPath "LocalStorageDetails.csv") -NoTypeInformation
+$sortedData | Export-Excel (Join-Path $scriptPath "LocalStorageDetails.xlsx") -AutoSize
 Write-Output "Audit completed and data exported to LocalStorageDetails.csv and LocalStorageDetails.xlsx"
