@@ -86,8 +86,10 @@ foreach ($appliance in $appliances) {
 }
 # Disconnect after all servers for a given appliance have been processed
 Disconnect-OVMgmt
+# Sort the collected data by ApplianceFQDN and BayNumber
+$sortedData = $data | Sort-Object -Property ApplianceFQDN, BayNumber -Descending
 # Export the collected data to a CSV file
-$data | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
+$sortedData | Export-Csv -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.csv") -NoTypeInformation
 # Export the collected data to an Excel file
-$data | Export-Excel -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.xlsx") -AutoSize
+$sortedData | Export-Excel -Path (Join-Path -Path $scriptPath -ChildPath "LocalStorageDetails.xlsx") -AutoSize
 Write-Output "Audit completed and data exported to LocalStorageDetails.csv and LocalStorageDetails.xlsx"
