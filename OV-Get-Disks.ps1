@@ -37,8 +37,9 @@ foreach ($connection in $Global:ConnectedSessions) {  # Iterate over established
             if ($localStorageDetails) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     $info = [PSCustomObject]@{
-                        ApplianceFQDN             = $connection.Name  # Get the appliance name from the connection object
-                        ServerName               = $server.Name -split ', ' | Select-Object -First 1
+                        ApplianceFQDN             = $connection.Name
+                        ServerName                = $server.serverName.ToUpper()
+                        Name               = $server.Name -split ', ' | Select-Object -First 1
                         BayNumber                = $server.Name -split ', ' | Select-Object -Last 1
                         ServerStatus             = $server.Status
                         ServerPower              = $server.PowerState
@@ -57,7 +58,7 @@ foreach ($connection in $Global:ConnectedSessions) {  # Iterate over established
                         LogicalDriveNumbers      = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.LogicalDriveNumber }) -join ', '
                         RaidValues               = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.Raid }) -join ', '
                         Model                    = $localStorageDetails.Data.Model
-                        DriveBlockSizeBytes       = $drive.BlockSizeBytes
+                        DriveBlockSizeBytes      = $drive.BlockSizeBytes
                         LogicalCapacityGB        = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
                         DriveEncryptedDrive      = $drive.EncryptedDrive
                         DriveFirmwareVersion     = $drive.FirmwareVersion.Current.VersionString
