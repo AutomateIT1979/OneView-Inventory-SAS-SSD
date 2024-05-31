@@ -11,20 +11,29 @@ $logFile = Join-Path $scriptPath "error_log.txt"
 
 foreach ($appliance in $appliances) {
     $fqdn = $appliance.Appliance_FQDN
-    $isConnected = $false 
+    
+    # Check if already connected to this appliance
+    $existingConnection = $Global:ConnectedSessions | Where-Object { $_.Name -eq $fqdn }
+
+    if (-not $existingConnection) {  # Connect only if not already connected
+        try {
+            Connect-OVMgmt -Hostname $fqdn -Credential $credential
+        }
+        catch {
+            $errorMessage = "Error connecting to appliance ${fqdn}: $($_.Exception.Message)"
+            Write-Warning $errorMessage
+            $errorMessage | Add-Content $logFile
+            continue  # Skip to the next appliance if connection fails
+        }
+    }
 
     try {
-        if (-not $isConnected) { 
-            Connect-OVMgmt -Hostname $fqdn -Credential $credential
-            $isConnected = $true 
-        }
-
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
 
         foreach ($server in $servers) {
             $localStorageUri = $server.uri + '/localStorage'
             $localStorageDetails = Send-OVRequest -uri $localStorageUri
-           
+            
             if ($localStorageDetails) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     $info = [PSCustomObject]@{
@@ -61,7 +70,7 @@ foreach ($appliance in $appliances) {
                         DriveState               = $drive.Status.State
                         "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
                     }
-                    $data.Add($info) 
+                    $data.Add($info)
                 }
             }
         }
@@ -72,11 +81,8 @@ foreach ($appliance in $appliances) {
         $errorMessage | Add-Content $logFile
     }
     finally {
-        if ($isConnected) {
-            Disconnect-OVMgmt
-            $isConnected = $false
-        }
-    } 
+        # No explicit disconnect needed. The HPE OneView PowerShell module handles disconnections automatically.
+    }
 }
 
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, BayNumber -Descending
