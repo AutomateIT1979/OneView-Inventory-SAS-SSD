@@ -11,10 +11,13 @@ $logFile = Join-Path $scriptPath "error_log.txt"
 
 foreach ($appliance in $appliances) {
     $fqdn = $appliance.Appliance_FQDN
+    $isConnected = $false 
 
     try {
-        # Connect to the OneView appliance
-        Connect-OVMgmt -Hostname $fqdn -Credential $credential
+        if (-not $isConnected) { 
+            Connect-OVMgmt -Hostname $fqdn -Credential $credential
+            $isConnected = $true 
+        }
 
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
 
@@ -25,43 +28,37 @@ foreach ($appliance in $appliances) {
             if ($localStorageDetails) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     $info = [PSCustomObject]@{
-                        # Server information (from the server object) and local storage details (from localStorageDetails)
-                        ApplianceFQDN              = $fqdn
-                        ServerName                 = $server.Name -split ', ' | Select-Object -First 1
-                        BayNumber                  = $server.Name -split ', ' | Select-Object -Last 1
-                        ServerStatus               = $server.Status
-                        ServerPower                = $server.PowerState
-                        ProcessorCoreCount         = $server.ProcessorCoreCount
-                        ProcessorCount             = $server.ProcessorCount
-                        ProcessorSpeedMhz          = $server.ProcessorSpeedMhz
-                        ProcessorType              = $server.ProcessorType
-                        ServerSerialNumber         = $server.SerialNumber
-                        ServerModel                = $server.Model
-                        AdapterType                = $localStorageDetails.Data.AdapterType
-                        CurrentOperatingMode       = $localStorageDetails.Data.CurrentOperatingMode                 
-                        FirmwareVersion            = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
-                        InternalPortCount          = $localStorageDetails.Data.InternalPortCount
-                        Location                   = $localStorageDetails.Data.Location
-                        LocationFormat             = $localStorageDetails.Data.LocationFormat                      
-                        LogicalDriveNumbers        = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.LogicalDriveNumber }) -join ', '
-                        RaidValues                 = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.Raid }) -join ', '
-                        Model                      = $localStorageDetails.Data.Model
-                        DriveBlockSizeBytes        = $drive.BlockSizeBytes
-                        # Calculate the logical capacity in GB
-                        LogicalCapacityGB          = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
-                        DriveEncryptedDrive        = $drive.EncryptedDrive
-                        DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
-                        DriveInterfaceType         = $drive.InterfaceType
-                        DriveMediaType             = $drive.MediaType
-                        DriveLocation              = $drive.Location
-                        DriveModel                 = $drive.Model
-                        # Get the drive serial number
-                        DriveSerialNumber          = $drive.SerialNumber
-                        # Get the drive status (health)
-                        DriveStatus                = $drive.Status.Health
-                        # Get the drive state
-                        DriveState                 = $drive.Status.State
-                        # Show the remaining life of the SSD in percentage
+                        ApplianceFQDN             = $fqdn
+                        ServerName               = $server.Name -split ', ' | Select-Object -First 1
+                        BayNumber                = $server.Name -split ', ' | Select-Object -Last 1
+                        ServerStatus             = $server.Status
+                        ServerPower              = $server.PowerState
+                        ProcessorCoreCount       = $server.ProcessorCoreCount
+                        ProcessorCount           = $server.ProcessorCount
+                        ProcessorSpeedMhz        = $server.ProcessorSpeedMhz
+                        ProcessorType            = $server.ProcessorType
+                        ServerSerialNumber       = $server.SerialNumber
+                        ServerModel              = $server.Model
+                        AdapterType              = $localStorageDetails.Data.AdapterType
+                        CurrentOperatingMode     = $localStorageDetails.Data.CurrentOperatingMode
+                        FirmwareVersion          = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
+                        InternalPortCount        = $localStorageDetails.Data.InternalPortCount
+                        Location                 = $localStorageDetails.Data.Location
+                        LocationFormat           = $localStorageDetails.Data.LocationFormat
+                        LogicalDriveNumbers      = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.LogicalDriveNumber }) -join ', '
+                        RaidValues               = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.Raid }) -join ', '
+                        Model                    = $localStorageDetails.Data.Model
+                        DriveBlockSizeBytes       = $drive.BlockSizeBytes
+                        LogicalCapacityGB        = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
+                        DriveEncryptedDrive      = $drive.EncryptedDrive
+                        DriveFirmwareVersion     = $drive.FirmwareVersion.Current.VersionString
+                        DriveInterfaceType       = $drive.InterfaceType
+                        DriveMediaType           = $drive.MediaType
+                        DriveLocation            = $drive.Location
+                        DriveModel               = $drive.Model
+                        DriveSerialNumber        = $drive.SerialNumber
+                        DriveStatus              = $drive.Status.Health
+                        DriveState               = $drive.Status.State
                         "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
                     }
                     $data.Add($info) 
@@ -75,8 +72,10 @@ foreach ($appliance in $appliances) {
         $errorMessage | Add-Content $logFile
     }
     finally {
-        # Always disconnect after processing each appliance
-        Disconnect-OVMgmt
+        if ($isConnected) {
+            Disconnect-OVMgmt
+            $isConnected = $false
+        }
     } 
 }
 
