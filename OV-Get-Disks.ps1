@@ -33,7 +33,8 @@ foreach ($appliance in $appliances) {
                     $info = [PSCustomObject]@{
                         # Server information (from the server object) and local storage details (from localStorageDetails)
                         ApplianceFQDN              = $fqdn
-                        ServerName                 = $server.Name
+                        ServerName                 = $server.Name -split ', ' | Select-Object -First 1
+                        BayNumber                  = $server.Name -split ', ' | Select-Object -Last 1
                         ServerStatus               = $server.Status
                         ServerPower                = $server.PowerState
                         ProcessorCoreCount         = $server.ProcessorCoreCount
