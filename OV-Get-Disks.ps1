@@ -127,15 +127,11 @@ function Import-ModulesIfNotExists {
 }
 # Import the required modules
 # Link to HPE OneView PowerShell Library: https://www.powershellgallery.com/packages/HPEOneView.800/8.0.3642.2784
-Import-ModulesIfNotExists -ModuleNames 'HPEOneView.800', 'Microsoft.PowerShell.Security', 'Microsoft.PowerShell.Utility', 'ImportExcel'
-# -------------------------------------------------------------------------------------------------------------------------------------------------
-# -------------------------------------------------------------- [Credential folder]---------------------------------------------------------------
-# Define the path to the credential folder
-$credentialFolder = Join-Path -Path $parentDirectory -ChildPath "Credential"
+Import-ModulesIfNotExists -ModuleNames 'HPEOneView.600', 'Microsoft.PowerShell.Security', 'Microsoft.PowerShell.Utility', 'ImportExcel'
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Appliances list]-----------------------------------------------------------------
 # Task 2: import Appliances list from the CSV file.
-Write-Host "`n$Spaces$($taskNumber). Importing Appliances list from the CSV file:`n" -ForegroundColor Magenta
+Write-Host "`n$Spaces$($taskNumber). Importing Appliances list from the CSV file:`n" -ForegroundColor DarkGreen
 $csvPath = Join-Path $scriptDirectory "Appliances_liste.csv"
 $appliances = Import-Csv $csvPath
 # -------------------------------------------------------------------------------------------------------------------------------------------------
@@ -164,10 +160,14 @@ else {
     # Log the failure to import the CSV file
     Write-Log -Message "Failed to import the CSV file." -Level "Error" -NoConsoleOutput
 }
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Credential folder]---------------------------------------------------------------
+# Define the path to the credential folder
+$credentialFolder = Join-Path -Path $parentDirectory -ChildPath "Credential"
 # increment $script:taskNumber after the function call
 $script:taskNumber++
 # Task 3: Check if credential folder exists
-Write-Host "`n$Spaces$($taskNumber). Checking for credential folder:`n" -ForegroundColor Magenta
+Write-Host "`n$Spaces$($taskNumber). Checking for credential folder:`n" -ForegroundColor DarkGreen
 # Log the task
 Write-Log -Message "Checking for credential folder." -Level "Info" -NoConsoleOutput
 # Check if the credential folder exists, if not say it at console and create it, if already exist say it at console
@@ -199,7 +199,7 @@ $credentialFile = Join-Path -Path $credentialFolder -ChildPath "credential.txt"
 # increment $script:taskNumber after the function call
 $script:taskNumber++
 # Task 4: Check CSV & Excel Folders exists.
-Write-Host "`n$Spaces$($taskNumber). Check CSV & Excel Folders exists:`n" -ForegroundColor Magenta
+Write-Host "`n$Spaces$($taskNumber). Check CSV & Excel Folders exists:`n" -ForegroundColor DarkGreen
 # Check if the credential file exists
 if (-not (Test-Path -Path $credentialFile)) {
     # Prompt the user to enter their login and password
@@ -269,8 +269,6 @@ else {
 $data = @()
 # Log file for errors
 $logFile = Join-Path -Path $scriptDirectory -ChildPath "error_log.txt"
-# Define credentials for connecting to OneView appliances
-$credential = Get-Credential -Message "Enter OneView credentials"
 # Loop through each appliance and retrieve the required information
 foreach ($appliance in $appliances) {
     $fqdn = $appliance.Appliance_FQDN
@@ -333,9 +331,24 @@ foreach ($appliance in $appliances) {
 # Sorting and exporting data to CSV and Excel
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
 # Export data to CSV file (append mode)
-$sortedData | Export-Csv Join-Path -Path $scriptDirectory -ChildPath "LocalStorageDetails.csv" -NoTypeInformation -Append
+$sortedData | Export-Csv -Path (Join-Path $scriptDirectory -ChildPath "LocalStorageDetails.csv") -NoTypeInformation -Append
 # Export data to Excel file (append mode)
-$sortedData | Export-Excel -Path "$scriptDirectory\LocalStorageDetails.xlsx" -Show -AutoSize -Append
+$sortedData | Export-Excel -Path (Join-Path $scriptDirectory -ChildPath "LocalStorageDetails.xlsx") -AutoSize -Append
+# Colorize the Excel file
+# Get unique serial numbers from the sorted data
+$serialNumbers = $sortedData.ServerSerialNumber | Get-Unique
+# Open the Excel file
+$excel = Open-ExcelPackage -Path $excelFilePath
+# Loop through each serial number and apply conditional formatting
+foreach ($serialNumber in $serialNumbers) {
+    $color = Get-Random -Minimum 0 -Maximum 16777215  # Generate a random color
+    Set-ExcelConditionalFormatting -Workbook $excel -WorksheetName "Sheet1" -Range "A1:F100" `
+        -ConditionalFormattingType Expression -ConditionalFormattingOperator Equal `
+        -ConditionalFormattingFormula "=E1=`"$serialNumber`"" -BackgroundColor "#$($color.ToString('X'))"
+}
+# Save and close the Excel file
+$excel | Save-ExcelPackage -Path $excelFilePath
+$excel.Dispose()
 # Display completion message to the user with the path to the exported files
 Write-Host "`t• Data collection completed. The data has been exported to the following files:"
 Write-Host "`t• CSV file: $scriptDirectory\LocalStorageDetails.csv" -ForegroundColor Green
