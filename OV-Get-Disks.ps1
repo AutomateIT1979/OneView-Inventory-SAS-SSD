@@ -16,6 +16,9 @@ $data = @()
 # Log file for errors
 $logFile = Join-Path -Path $scriptPath -ChildPath "error_log.txt"
 
+# Define credentials for connecting to OneView appliances
+$credential = Get-Credential -Message "Enter OneView credentials"
+
 # Loop through each appliance and retrieve the required information
 foreach ($appliance in $appliances) {
     $fqdn = $appliance.Appliance_FQDN
