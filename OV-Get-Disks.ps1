@@ -358,43 +358,46 @@ if ($excelProcesses) {
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
 # Export data to CSV file (append mode)
 $csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
-# Ensure that all data are exported to the CSV file before importing it into Excel to avoid denied access
-$csvFileAccess = $true
-while ($csvFileAccess) {
+$csvExported = $false
+
+while (-not $csvExported) {
     try {
         $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
-        $csvFileAccess = $false
-    }
-    catch {
+        $csvExported = $true
+    } catch {
         Write-Warning "Failed to export data to the CSV file. Retrying..."
         Start-Sleep -Seconds 1
     }
 }
+
 # Import data to Excel file (append mode) and apply conditional formatting if the CSV file is accessible
-if (-not $csvFileAccess) {
-    $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
-    # Define the Excel worksheet name
-    $worksheetName = "LocalStorageDetails"
-    # Open the Excel file and apply conditional formatting
+$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
+$worksheetName = "LocalStorageDetails"
+
+if (Test-Path -Path $csvPath) {
     $excelParams = @{
         Path          = $excelPath
         AutoSize      = $true
         TableStyle    = 'Medium11'
         BoldTopRow    = $true
-        WorksheetName = $worksheetName  # Set the worksheet name dynamically
+        WorksheetName = $worksheetName
         PassThru      = $true
     }
-    $xlsx = Import-Csv $csvDir | Export-Excel @excelParams
+
+    $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
     $ws = $xlsx.Workbook.Worksheets[$worksheetName]
     $ws.View.ShowGridLines = $false
+
     # Get unique serial numbers from the sorted data
     $serialNumbers = $sortedData.ServerSerialNumber | Get-Unique
+
     # Apply conditional formatting
     foreach ($serialNumber in $serialNumbers) {
         $color = Get-Random -Minimum 0 -Maximum 16777215  # Generate a random color
         $ws.Cells["A1:F100"].Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
         $ws.Cells["A1:F100"].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb($color))
     }
+
     # Save and close the Excel file
     Save-Excel -ExcelPackage $xlsx -Path $excelPath
     Close-ExcelPackage $xlsx
