@@ -369,7 +369,8 @@ $sortedData | Export-Excel -Path $excelPath -AutoSize -Append
 
 # Open the Excel file and apply conditional formatting
 $xlsx = Import-Excel -Path $excelPath
-$ws = $xlsx.Workbook.Worksheets[0]  # Assuming the first worksheet
+$worksheetName = 'InternalGen10Storage'  # Set the worksheet name dynamically
+$ws = $xlsx | Get-ExcelWorksheet -WorksheetName $worksheetName
 $ws.View.ShowGridLines = $false  # Hide gridlines
 
 # Get unique serial numbers from the sorted data
