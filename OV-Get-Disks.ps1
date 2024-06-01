@@ -24,24 +24,13 @@ if (-not (Test-Path $logFile)) {
 }
 
 # Connect to all appliances and gather information
-$connectedSessions = @()
 foreach ($appliance in $appliancesList) {
     $fqdn = $appliance.Appliance_FQDN
 
     try {
         $connectedSession = Connect-OVMgmt -Hostname $fqdn -Credential (Get-Credential -Message "Enter OneView credentials")
-        $connectedSessions += $connectedSession
-    }
-    catch {
-        Write-ErrorLog "Error connecting to appliance ${fqdn}: $($_.Exception.Message)"
-        continue  # Skip to the next appliance if connection fails
-    }
-}
 
-foreach ($connectedSession in $connectedSessions) {
-    try {
-        Set-OVApplianceDefaultConnection $connectedSession
-        $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
+        $servers = Get-OVServer -Connection $connectedSession | Where-Object { $_.model -match 'Gen10' }
 
         foreach ($server in $servers) {
             $localStorageUri = $server.uri + '/localStorage'
@@ -90,12 +79,12 @@ foreach ($connectedSession in $connectedSessions) {
         }
     }
     catch {
-        Write-ErrorLog "Error processing appliance $($connectedSession.Name): $($_.Exception.Message)"
+        Write-ErrorLog "Error connecting to appliance ${fqdn}: $($_.Exception.Message)"
+    }
+    finally {
+        Disconnect-OVMgmt -Connection $connectedSession
     }
 }
-
-# Disconnect from all appliances
-Disconnect-OVMgmt
 
 # Sorting and exporting data to CSV and Excel
 $sortedData = $dataCollection | Sort-Object -Property ApplianceFQDN, BayNumber -Descending
