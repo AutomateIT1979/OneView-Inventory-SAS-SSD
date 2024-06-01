@@ -340,14 +340,12 @@ Write-Host "`n$Spaces$($taskNumber). Closing Excel:`n" -ForegroundColor DarkGree
 Write-Log -Message "Closing Excel." -Level "Info" -NoConsoleOutput
 # Get all Excel processes
 $excelProcesses = Get-Process -Name Excel -ErrorAction SilentlyContinue
-
 # If there are any Excel processes
 if ($excelProcesses) {
     # Stop all Excel processes
     $excelProcesses | ForEach-Object {
         Stop-Process -Id $_.Id -Force
     }
-
     # Write a message to the console
     Write-Host "`t• All running Excel processes have been closed." -NoNewline -ForegroundColor DarkGray
     Write-Host " ✔" -ForegroundColor Green
@@ -358,31 +356,28 @@ if ($excelProcesses) {
 }
 # Sorting and exporting data to CSV and Excel
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
-
 # Export data to CSV file (append mode)
 $csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
-$sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
-
-# Export data to Excel file (append mode)
-$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
-$sortedData | Export-Excel -Path $excelPath -AutoSize -Append
-
 # Open the Excel file and apply conditional formatting
-$xlsx = Import-Excel -Path $excelPath
-$worksheetName = 'InternalGen10Storage'  # Set the worksheet name dynamically
-$ws = $xlsx | Get-ExcelWorksheet -WorksheetName $worksheetName
-$ws.View.ShowGridLines = $false  # Hide gridlines
-
+$excelParams = @{
+    Path          = $excelPath
+    AutoSize      = $true
+    TableStyle    = 'Medium11'
+    BoldTopRow    = $true
+    WorksheetName = $worksheetName  # Set the worksheet name dynamically
+    PassThru      = $true
+}
+$xlsx = Import-Csv $csvDir | Export-Excel @excelParams
+$ws = $xlsx.Workbook.Worksheets[$worksheetName]
+$ws.View.ShowGridLines = $false
 # Get unique serial numbers from the sorted data
 $serialNumbers = $sortedData.ServerSerialNumber | Get-Unique
-
 # Apply conditional formatting
 foreach ($serialNumber in $serialNumbers) {
     $color = Get-Random -Minimum 0 -Maximum 16777215  # Generate a random color
     $ws.Cells["A1:F100"].Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
     $ws.Cells["A1:F100"].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb($color))
 }
-
 # Save and close the Excel file
 Save-Excel -ExcelPackage $xlsx -Path $excelPath
 Close-ExcelPackage $xlsx
