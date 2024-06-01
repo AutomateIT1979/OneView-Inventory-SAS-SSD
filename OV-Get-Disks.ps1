@@ -346,40 +346,31 @@ function Save-AllExcelWorkbooks {
         [Parameter(Mandatory = $false, HelpMessage = "Filters Excel processes by name (e.g., '*.xlsx').")]
         [string]$Filter = "*"
     )
-    $excelProcesses = Get-Process | Where-Object { 
-        $_.ProcessName -eq "EXCEL" -and $_.MainWindowTitle -like "*$Filter*"
-    }
-    if ($excelProcesses) {
-        Write-Output "Found the following Excel processes:"
-        $excelProcesses | Format-Table Id, MainWindowTitle
-        foreach ($process in $excelProcesses) {
-            try {
-                $excel = New-Object -ComObject Excel.Application -ErrorAction Stop
-                $excel.Visible = $false
-                $workbook = $excel.Workbooks.Item($process.MainWindowTitle)
-                if ($workbook) {
-                    if ($SaveFormat) {
-                        $workbook.SaveAs([ref] $workbook.FullName, [ref] $SaveFormat)
-                        Write-Output "Saved $($workbook.FullName) as $SaveFormat"
-                    } else {
-                        $workbook.Save()
-                        Write-Output "Saved $($workbook.FullName)"
-                    }
-                } else {
-                    Write-Warning "Could not access workbook for process $($process.Id) - $($process.MainWindowTitle)"
-                }
-                $excel.Quit()
-            } catch {
-                Write-Warning "Failed to save or access workbook for process $($process.Id) - $($process.MainWindowTitle): $($_.Exception.Message)"
-            } finally {
-                [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
-                Remove-Variable excel
+    $excel = New-Object -ComObject Excel.Application
+    $excel.Visible = $false
+    $workbooks = $excel.Workbooks
+    if ($workbooks.Count -gt 0) {
+        Write-Output "Found the following Excel workbooks:"
+        for ($i = 1; $i -le $workbooks.Count; $i++) {
+            $workbook = $workbooks.Item($i)
+            Write-Output "Workbook: $($workbook.FullName)"
+            if ($SaveFormat) {
+                $workbook.SaveAs($workbook.FullName, $SaveFormat)
+                Write-Output "Saved $($workbook.FullName) as $SaveFormat"
+            } else {
+                $workbook.Save()
+                Write-Output "Saved $($workbook.FullName)"
             }
         }
     } else {
-        Write-Output "No Excel processes found matching the filter '$Filter'."
+        Write-Output "No Excel workbooks found."
     }
+    $excel.Quit()
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
+    Remove-Variable excel
 }
+# Close all Excel workbooks
+Save-AllExcelWorkbooks
 # Sorting and exporting data to CSV and Excel
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
 # Export data to CSV file (append mode)
