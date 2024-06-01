@@ -1,9 +1,9 @@
 # Import required modules and show import progress
 Write-Host "Importing HPE OneView module..." -ForegroundColor Yellow
-Import-Module HPEOneView.660
+Import-Module HPEOneView.660 -Verbose
 
 Write-Host "Importing ImportExcel module..." -ForegroundColor Yellow
-Import-Module ImportExcel
+Import-Module ImportExcel -Verbose
 
 # Define script paths and file names
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -27,22 +27,14 @@ if (-not (Test-Path $logFile)) {
 }
 
 # Connect to all appliances and gather information
-$connectedAppliances = @()
 foreach ($appliance in $appliancesList) {
     $fqdn = $appliance.Appliance_FQDN
-
-    # Skip if already connected to the same appliance
-    if ($connectedAppliances -contains $fqdn) {
-        Write-Host "Skipping already connected appliance: $fqdn" -ForegroundColor Yellow
-        continue
-    }
 
     try {
         Write-Host "Connecting to OneView appliance: $fqdn" -ForegroundColor Green
         $connectedSession = Connect-OVMgmt -Hostname $fqdn -Credential (Get-Credential -Message "Enter OneView credentials")
-        $connectedAppliances += $fqdn
 
-        $servers = Get-OVServer -ApplianceConnection $connectedSession | Where-Object { $_.model -match 'Gen10' }
+        $servers = Get-OVServer -Connection $connectedSession | Where-Object { $_.model -match 'Gen10' }
 
         foreach ($server in $servers) {
             $localStorageUri = $server.uri + '/localStorage'
