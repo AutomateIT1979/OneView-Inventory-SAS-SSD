@@ -18,6 +18,11 @@ function Write-ErrorLog {
 $dataCollection = [System.Collections.Generic.List[object]]::new()
 $logFile = Join-Path $scriptPath "error_log.txt"
 
+# Check if log file exists, create it if not
+if (-not (Test-Path $logFile)) {
+    New-Item -Path $logFile -ItemType File -Force
+}
+
 # Connect to all appliances and gather information
 $connectedSessions = @()
 foreach ($appliance in $appliancesList) {
@@ -31,61 +36,61 @@ foreach ($appliance in $appliancesList) {
         Write-ErrorLog "Error connecting to appliance ${fqdn}: $($_.Exception.Message)"
         continue  # Skip to the next appliance if connection fails
     }
+}
 
-    foreach ($connection in $connectedSessions) {
-        try {
-            Set-OVApplianceDefaultConnection $connection
-            $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
+foreach ($connectedSession in $connectedSessions) {
+    try {
+        Set-OVApplianceDefaultConnection $connectedSession
+        $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
 
-            foreach ($server in $servers) {
-                $localStorageUri = $server.uri + '/localStorage'
-                $localStorageDetails = Send-OVRequest -uri $localStorageUri
+        foreach ($server in $servers) {
+            $localStorageUri = $server.uri + '/localStorage'
+            $localStorageDetails = Send-OVRequest -uri $localStorageUri
 
-                if ($localStorageDetails) {
-                    foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
-                        $info = [PSCustomObject]@{
-                            ApplianceFQDN              = $connection.Name
-                            ServerName                 = $server.serverName.ToUpper()
-                            Name                       = ($server.Name -split ', ')[0]
-                            BayNumber                  = ($server.Name -split ', ')[-1]
-                            ServerStatus               = $server.Status
-                            ServerPower                = $server.PowerState
-                            ProcessorCoreCount         = $server.ProcessorCoreCount
-                            ProcessorCount             = $server.ProcessorCount
-                            ProcessorSpeedMhz          = $server.ProcessorSpeedMhz
-                            ProcessorType              = $server.ProcessorType
-                            ServerSerialNumber         = $server.SerialNumber
-                            ServerModel                = $server.Model
-                            AdapterType                = $localStorageDetails.Data.AdapterType
-                            CurrentOperatingMode       = $localStorageDetails.Data.CurrentOperatingMode
-                            FirmwareVersion            = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
-                            InternalPortCount          = $localStorageDetails.Data.InternalPortCount
-                            Location                   = $localStorageDetails.Data.Location
-                            LocationFormat             = $localStorageDetails.Data.LocationFormat
-                            LogicalDriveNumbers        = ($localStorageDetails.Data.LogicalDrives.LogicalDriveNumber) -join ', '
-                            RaidValues                 = ($localStorageDetails.Data.LogicalDrives.Raid) -join ', '
-                            Model                      = $localStorageDetails.Data.Model
-                            DriveBlockSizeBytes        = $drive.BlockSizeBytes
-                            LogicalCapacityGB          = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
-                            DriveEncryptedDrive        = $drive.EncryptedDrive
-                            DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
-                            DriveInterfaceType         = $drive.InterfaceType
-                            DriveMediaType             = $drive.MediaType
-                            DriveLocation              = $drive.Location
-                            DriveModel                 = $drive.Model
-                            DriveSerialNumber          = $drive.SerialNumber
-                            DriveStatus                = $drive.Status.Health
-                            DriveState                 = $drive.Status.State
-                            "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
-                        }
-                        $dataCollection.Add($info)
+            if ($localStorageDetails) {
+                foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
+                    $info = [PSCustomObject]@{
+                        ApplianceFQDN              = $connectedSession.Name
+                        ServerName                 = $server.serverName.ToUpper()
+                        Name                       = ($server.Name -split ', ')[0]
+                        BayNumber                  = ($server.Name -split ', ')[-1]
+                        ServerStatus               = $server.Status
+                        ServerPower                = $server.PowerState
+                        ProcessorCoreCount         = $server.ProcessorCoreCount
+                        ProcessorCount             = $server.ProcessorCount
+                        ProcessorSpeedMhz          = $server.ProcessorSpeedMhz
+                        ProcessorType              = $server.ProcessorType
+                        ServerSerialNumber         = $server.SerialNumber
+                        ServerModel                = $server.Model
+                        AdapterType                = $localStorageDetails.Data.AdapterType
+                        CurrentOperatingMode       = $localStorageDetails.Data.CurrentOperatingMode
+                        FirmwareVersion            = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
+                        InternalPortCount          = $localStorageDetails.Data.InternalPortCount
+                        Location                   = $localStorageDetails.Data.Location
+                        LocationFormat             = $localStorageDetails.Data.LocationFormat
+                        LogicalDriveNumbers        = ($localStorageDetails.Data.LogicalDrives.LogicalDriveNumber) -join ', '
+                        RaidValues                 = ($localStorageDetails.Data.LogicalDrives.Raid) -join ', '
+                        Model                      = $localStorageDetails.Data.Model
+                        DriveBlockSizeBytes        = $drive.BlockSizeBytes
+                        LogicalCapacityGB          = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
+                        DriveEncryptedDrive        = $drive.EncryptedDrive
+                        DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
+                        DriveInterfaceType         = $drive.InterfaceType
+                        DriveMediaType             = $drive.MediaType
+                        DriveLocation              = $drive.Location
+                        DriveModel                 = $drive.Model
+                        DriveSerialNumber          = $drive.SerialNumber
+                        DriveStatus                = $drive.Status.Health
+                        DriveState                 = $drive.Status.State
+                        "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
                     }
+                    $dataCollection.Add($info)
                 }
             }
         }
-        catch {
-            Write-ErrorLog "Error processing appliance $($connection.Name): $($_.Exception.Message)"
-        }
+    }
+    catch {
+        Write-ErrorLog "Error processing appliance $($connectedSession.Name): $($_.Exception.Message)"
     }
 }
 
@@ -94,10 +99,14 @@ Disconnect-OVMgmt
 
 # Sorting and exporting data to CSV and Excel
 $sortedData = $dataCollection | Sort-Object -Property ApplianceFQDN, BayNumber -Descending
-# Export data to CSV and Excel files
-$sortedData | Export-Csv -Path "$scriptPath\LocalStorageDetails.csv" -NoTypeInformation
-$sortedData | Export-Excel -Path "$scriptPath\LocalStorageDetails.xlsx" -Show -AutoSize
-# Display completion message to the user with the path to the exported files, taking into account the script path and file names, output design and color formatting for better readability and user experience
+
+# Export data to CSV file (append mode)
+$sortedData | Export-Csv -Path "$scriptPath\LocalStorageDetails.csv" -NoTypeInformation -Append
+
+# Export data to Excel file (append mode)
+$sortedData | Export-Excel -Path "$scriptPath\LocalStorageDetails.xlsx" -Show -AutoSize -Append
+
+# Display completion message to the user with the path to the exported files
 Write-Host "`t• Data collection completed. The data has been exported to the following files:"
 Write-Host "`t• CSV file: $scriptPath\LocalStorageDetails.csv" -ForegroundColor Green
 Write-Host "`t• Excel file: $scriptPath\LocalStorageDetails.xlsx" -ForegroundColor Green
