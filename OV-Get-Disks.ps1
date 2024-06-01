@@ -346,7 +346,13 @@ function Save-AllExcelWorkbooks {
         [Parameter(Mandatory = $false, HelpMessage = "Filters Excel processes by name (e.g., '*.xlsx').")]
         [string]$Filter = "*"
     )
-    $excel = New-Object -ComObject Excel.Application
+    try {
+        # Try to get an existing Excel application instance
+        $excel = [Runtime.Interopservices.Marshal]::GetActiveObject('Excel.Application')
+    } catch {
+        # If there isn't one, create a new one
+        $excel = New-Object -ComObject Excel.Application
+    }
     $excel.Visible = $false
     $workbooks = $excel.Workbooks
     if ($workbooks.Count -gt 0) {
