@@ -19,18 +19,20 @@ $dataCollection = [System.Collections.Generic.List[object]]::new()
 $logFile = Join-Path $scriptPath "error_log.txt"
 
 # Connect to all appliances and gather information
+$connectedSessions = @()
 foreach ($appliance in $appliancesList) {
     $fqdn = $appliance.Appliance_FQDN
 
     try {
-        Connect-OVMgmt -Hostname $fqdn -Credential (Get-Credential -Message "Enter OneView credentials")
+        $connectedSession = Connect-OVMgmt -Hostname $fqdn -Credential (Get-Credential -Message "Enter OneView credentials")
+        $connectedSessions += $connectedSession
     }
     catch {
         Write-ErrorLog "Error connecting to appliance ${fqdn}: $($_.Exception.Message)"
         continue  # Skip to the next appliance if connection fails
     }
 
-    foreach ($connection in $Global:ConnectedSessions) {
+    foreach ($connection in $connectedSessions) {
         try {
             Set-OVApplianceDefaultConnection $connection
             $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
@@ -95,7 +97,7 @@ $sortedData = $dataCollection | Sort-Object -Property ApplianceFQDN, BayNumber -
 # Export data to CSV and Excel files
 $sortedData | Export-Csv -Path "$scriptPath\LocalStorageDetails.csv" -NoTypeInformation
 $sortedData | Export-Excel -Path "$scriptPath\LocalStorageDetails.xlsx" -Show -AutoSize
-# Display the completion message to the user  with the path to the exported files, taking into account the script path and file names, output design and color formatting for better readability and user experience
+# Display completion message to the user with the path to the exported files, taking into account the script path and file names, output design and color formatting for better readability and user experience
 Write-Host "Data collection completed. The data has been exported to the following files:"
 Write-Host "CSV file: $scriptPath\LocalStorageDetails.csv" -ForegroundColor Green
 Write-Host "Excel file: $scriptPath\LocalStorageDetails.xlsx" -ForegroundColor Green
