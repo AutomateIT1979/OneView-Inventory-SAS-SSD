@@ -358,6 +358,20 @@ if ($excelProcesses) {
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
 # Export data to CSV file (append mode)
 $csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
+# Ensure that all data are exported to the CSV file before importing it into Excel to avoid denied access
+$csvFileAccess = $true
+while ($csvFileAccess) {
+    try {
+        $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
+        $csvFileAccess = $false
+    }
+    catch {
+        Write-Warning "Failed to export data to the CSV file. Retrying..."
+        Start-Sleep -Seconds 1
+    }
+}
+# Worksheets name
+$worksheetName = "LocalStorageDetails"
 # Open the Excel file and apply conditional formatting
 $excelParams = @{
     Path          = $excelPath
