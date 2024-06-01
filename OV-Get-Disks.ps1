@@ -1,6 +1,6 @@
 # Import required modules
-. HPEOneView.660
-. ImportExcel
+Import-Module HPEOneView.660
+Import-Module ImportExcel
 
 # Define script paths and file names
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -82,7 +82,7 @@ foreach ($appliance in $appliancesList) {
             }
         }
         catch {
-            Log-Error "Error processing appliance $($connection.Name): $($_.Exception.Message)"
+            Write-ErrorLog "Error processing appliance $($connection.Name): $($_.Exception.Message)"
         }
     }
 }
@@ -92,6 +92,8 @@ Disconnect-OVMgmt
 
 # Sorting and exporting data to CSV and Excel
 $sortedData = $dataCollection | Sort-Object -Property ApplianceFQDN, BayNumber -Descending
-Export-ToFile -Data $sortedData -CSVFileName "LocalStorageDetails.csv" -ExcelFileName "LocalStorageDetails.xlsx" -ScriptPath $scriptPath
-
+# Export data to CSV and Excel files
+$sortedData | Export-Csv -Path "$scriptPath\LocalStorageDetails.csv" -NoTypeInformation
+$sortedData | Export-Excel -Path "$scriptPath\LocalStorageDetails.xlsx" -Show -AutoSize
+# Display completion message
 Write-Host "Audit completed and data exported to LocalStorageDetails.csv and LocalStorageDetails.xlsx"
