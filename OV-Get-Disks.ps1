@@ -1,6 +1,9 @@
-# Import required modules
-Import-Module HPEOneView.660
-Import-Module ImportExcel
+# Import required modules and show import progress
+Write-Host "Importing HPE OneView module..." -ForegroundColor Yellow
+Import-Module HPEOneView.660 -Verbose
+
+Write-Host "Importing ImportExcel module..." -ForegroundColor Yellow
+Import-Module ImportExcel -Verbose
 
 # Define script paths and file names
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -28,6 +31,7 @@ foreach ($appliance in $appliancesList) {
     $fqdn = $appliance.Appliance_FQDN
 
     try {
+        Write-Host "Connecting to OneView appliance: $fqdn" -ForegroundColor Green
         $connectedSession = Connect-OVMgmt -Hostname $fqdn -Credential (Get-Credential -Message "Enter OneView credentials")
 
         $servers = Get-OVServer -Connection $connectedSession | Where-Object { $_.model -match 'Gen10' }
@@ -82,7 +86,8 @@ foreach ($appliance in $appliancesList) {
         Write-ErrorLog "Error connecting to appliance ${fqdn}: $($_.Exception.Message)"
     }
     finally {
-        Disconnect-OVMgmt -Connection $connectedSession
+        Write-Host "Disconnecting from OneView appliance: $fqdn" -ForegroundColor Green
+        Disconnect-OVMgmt -Hostname $fqdn
     }
 }
 
