@@ -38,30 +38,30 @@ foreach ($appliance in $appliances) {
 
             # Check if localStorageDetails is not null
             if ($null -ne $localStorageDetails) {
-                foreach ($drive in $localStorageDetails.PhysicalDrives) {
+                foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     $info = [PSCustomObject]@{
                         ApplianceFQDN             = $fqdn
                         Servername                = $server.name.Trim()  # Remove extra spaces
-                        AdapterType               = $localStorageDetails.AdapterType
-                        CurrentOperatingMode      = $localStorageDetails.CurrentOperatingMode
-                        ExternalPortCount         = $localStorageDetails.ExternalPortCount
-                        FirmwareVersion           = $localStorageDetails.FirmwareVersion.Current
-                        InternalPortCount         = $localStorageDetails.InternalPortCount
-                        Location                  = $localStorageDetails.Location
-                        LocationFormat            = $localStorageDetails.LocationFormat
-                        Model                     = $localStorageDetails.Model
-                        Name                      = $localStorageDetails.Name
-                        SerialNumber              = $localStorageDetails.SerialNumber
-                        Status                    = $localStorageDetails.Status
+                        AdapterType               = $localStorageDetails.Data.AdapterType
+                        CurrentOperatingMode      = $localStorageDetails.Data.CurrentOperatingMode
+                        ExternalPortCount         = $localStorageDetails.Data.ExternalPortCount
+                        FirmwareVersion           = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
+                        InternalPortCount         = $localStorageDetails.Data.InternalPortCount
+                        Location                  = $localStorageDetails.Data.Location
+                        LocationFormat            = $localStorageDetails.Data.LocationFormat
+                        Model                     = $localStorageDetails.Data.Model
+                        Name                      = $localStorageDetails.Data.Name
+                        SerialNumber              = $localStorageDetails.Data.SerialNumber
+                        Status                    = $localStorageDetails.Data.Status
                         Drive_BlockSizeBytes       = $drive.BlockSizeBytes
                         Drive_CapacityLogicalBlocks = $drive.CapacityLogicalBlocks
                         Drive_CapacityMiB          = $drive.CapacityMiB
                         Drive_EncryptedDrive       = $drive.EncryptedDrive
-                        Drive_FirmwareVersion      = $drive.FirmwareVersion
+                        Drive_FirmwareVersion      = $drive.FirmwareVersion.Current.VersionString
                         Drive_Location            = $drive.Location
                         Drive_Model               = $drive.Model
                         Drive_SerialNumber        = $drive.SerialNumber
-                        Drive_Status              = $drive.Status
+                        Drive_Status              = $drive.Status.Health
                     }
 
                     # Add the collected information to the data array
