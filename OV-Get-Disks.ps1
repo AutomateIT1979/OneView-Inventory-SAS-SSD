@@ -1,41 +1,289 @@
-# Import required modules and show import progress
-Write-Host "Importing HPE OneView module..." -ForegroundColor Yellow
-Import-Module HPEOneView.660 -Verbose
-
-Write-Host "Importing ImportExcel module..." -ForegroundColor Yellow
-Import-Module ImportExcel -Verbose
-
-# Define script paths and file names
-$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$csvPath = Join-Path $scriptPath "Appliances_liste.csv"
+# Clear the console window
+Clear-Host
+# Create a string of 4 spaces
+$Spaces = [string]::new(' ', 4)
+# Define the script version
+$ScriptVersion = "1.0"
+# Get the directory from which the script is being executed
+$scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Definition
+# Define the location of the script file
+$ScriptFile = Join-Path -Path $scriptDirectory -ChildPath $MyInvocation.MyCommand.Name
+# Define the variable to store date and time information for creation and last modification
+$Created = (Get-ItemProperty -Path $ScriptFile -Name CreationTime).CreationTime.ToString("dd/MM/yyyy")
+# Get the parent directory of the script's directory
+$parentDirectory = Split-Path -Parent $scriptDirectory
+# Define the logging function Directory
+$loggingFunctionsDirectory = Join-Path -Path $parentDirectory -ChildPath "Logging_Function"
+# Construct the path to the Logging_Functions.ps1 script
+$loggingFunctionsPath = Join-Path -Path $loggingFunctionsDirectory -ChildPath "Logging_Functions.ps1"
+# Script Header main script
+$HeaderMainScript = @"
+Author: CHARCHOUF Sabri
+Description: This script creates Networks in HPE OneView using the HPE OneView PowerShell Library.
+Created: $Created
+Last Modified : $((Get-Item $PSCommandPath).LastWriteTime.ToString("dd/MM/yyyy"))
+"@
+# Display the header information in the console with a design
+$consoleWidth = $Host.UI.RawUI.WindowSize.Width
+$line = "─" * ($consoleWidth - 2)
+Write-Host "+$line+" -ForegroundColor DarkGray
+# Split the header into lines and display each part in different colors
+$HeaderMainScript -split "`n" | ForEach-Object {
+    $parts = $_ -split ": ", 2
+    Write-Host "`t" -NoNewline
+    Write-Host $parts[0] -NoNewline -ForegroundColor DarkGray
+    Write-Host ": " -NoNewline
+    Write-Host $parts[1] -ForegroundColor Cyan
+}
+Write-Host "+$line+" -ForegroundColor DarkGray
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Logging_Functions]---------------------------------------------------------------
+# Check if the Logging_Functions.ps1 script exists
+if (Test-Path -Path $loggingFunctionsPath) {
+    # Dot-source the Logging_Functions.ps1 script
+    . $loggingFunctionsPath
+    # Write a message to the console indicating that the logging functions have been loaded
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Logging functions have been loaded." -ForegroundColor Green
+}
+else {
+    # Write an error message to the console indicating that the logging functions script could not be found
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "The logging functions script could not be found at $loggingFunctionsPath" -ForegroundColor Red
+    # Stop the script execution
+    exit
+}
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Initialize task]-----------------------------------------------------------------
+# Initialize task counter with script scope
+$script:taskNumber = 1
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Import Required Modules]----------------------------------------------------------
+# Define the function to import required modules if they are not already imported
+function Import-ModulesIfNotExists {
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$ModuleNames
+    )
+    # Start logging
+    Start-Log -ScriptVersion $ScriptVersion -ScriptPath $PSCommandPath
+    # Task 1: Checking required modules
+    Write-Host "`n$Spaces$($taskNumber). Checking required modules:`n" -ForegroundColor DarkGreen
+    # Log the task
+    Write-Log -Message "Checking required modules." -Level "Info" -NoConsoleOutput
+    # Increment $script:taskNumber after the function call
+    $script:taskNumber++
+    # Total number of modules to check
+    $totalModules = $ModuleNames.Count
+    # Initialize the current module counter
+    $currentModuleNumber = 0
+    foreach ($ModuleName in $ModuleNames) {
+        $currentModuleNumber++
+        # Simple text output for checking required modules
+        Write-Host "`t• " -NoNewline -ForegroundColor White
+        Write-Host "Checking module " -NoNewline -ForegroundColor DarkGray
+        Write-Host "$currentModuleNumber" -NoNewline -ForegroundColor White
+        Write-Host " of " -NoNewline -ForegroundColor DarkGray
+        Write-Host "${totalModules}" -NoNewline -ForegroundColor Cyan
+        Write-Host ": $ModuleName" -ForegroundColor White
+        try {
+            # Check if the module is installed
+            if (-not (Get-Module -ListAvailable -Name $ModuleName)) {
+                Write-Host "`t• " -NoNewline -ForegroundColor White
+                Write-Host "Module " -NoNewline -ForegroundColor White
+                Write-Host "$ModuleName" -NoNewline -ForegroundColor Red
+                Write-Host " is not installed." -ForegroundColor White
+                Write-Log -Message "Module '$ModuleName' is not installed." -Level "Error" -NoConsoleOutput
+                continue
+            }
+            # Check if the module is already imported
+            if (Get-Module -Name $ModuleName) {
+                Write-Host "`t• " -NoNewline -ForegroundColor White
+                Write-Host "Module " -NoNewline -ForegroundColor DarkGray
+                Write-Host "$ModuleName" -NoNewline -ForegroundColor Yellow
+                Write-Host " is already imported." -ForegroundColor DarkGray
+                Write-Log -Message "Module '$ModuleName' is already imported." -Level "Info" -NoConsoleOutput
+                continue
+            }
+            # Try to import the module
+            Import-Module $ModuleName -ErrorAction Stop
+            Write-Host "`t• " -NoNewline -ForegroundColor White
+            Write-Host "Module " -NoNewline -ForegroundColor DarkGray
+            Write-Host "[$ModuleName]" -NoNewline -ForegroundColor Green
+            Write-Host " imported successfully." -ForegroundColor DarkGray
+            Write-Log -Message "Module '[$ModuleName]' imported successfully." -Level "OK" -NoConsoleOutput
+        }
+        catch {
+            Write-Host "`t• " -NoNewline -ForegroundColor White
+            Write-Host "Failed to import module " -NoNewline
+            Write-Host "[$ModuleName]" -NoNewline -ForegroundColor Red
+            Write-Host ": $_" -ForegroundColor Red
+            Write-Log -Message "Failed to import module '[$ModuleName]': $_" -Level "Error" -NoConsoleOutput
+        }
+        # Add a delay to slow down the progress bar
+        Start-Sleep -Seconds 1
+    }
+}
+# Import the required modules
+# Link to HPE OneView PowerShell Library: https://www.powershellgallery.com/packages/HPEOneView.800/8.0.3642.2784
+Import-ModulesIfNotExists -ModuleNames 'HPEOneView.800', 'Microsoft.PowerShell.Security', 'Microsoft.PowerShell.Utility', 'ImportExcel'
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Credential folder]---------------------------------------------------------------
+# Define the path to the credential folder
+$credentialFolder = Join-Path -Path $parentDirectory -ChildPath "Credential"
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Appliances list]-----------------------------------------------------------------
+# Task 2: import Appliances list from the CSV file.
+Write-Host "`n$Spaces$($taskNumber). Importing Appliances list from the CSV file:`n" -ForegroundColor Magenta
+$csvPath = Join-Path $scriptDirectory "Appliances_liste.csv"
 $appliances = Import-Csv $csvPath
-
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Confirm Import CSV file]---------------------------------------------------------
+# Confirm that the CSV file was imported successfully
+if ($appliances) {
+    # Get the total number of appliances
+    $totalAppliances = $appliances.Count
+    # Log the total number of appliances
+    Write-Log -Message "There are $totalAppliances appliances in the CSV file." -Level "Info" -NoConsoleOutput
+    # Display if the CSV file was imported successfully
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "The CSV file was imported successfully." -ForegroundColor Green
+    # Display the total number of appliances
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Total number of appliances:" -NoNewline -ForegroundColor DarkGray
+    Write-Host " $totalappliances" -NoNewline -ForegroundColor Cyan
+    Write-Host "" # This is to add a newline after the above output
+    # Log the successful import of the CSV file
+    Write-Log -Message "The CSV file was imported successfully." -Level "OK" -NoConsoleOutput
+}
+else {
+    # Display an error message if the CSV file failed to import
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Failed to import the CSV file." -ForegroundColor Red
+    # Log the failure to import the CSV file
+    Write-Log -Message "Failed to import the CSV file." -Level "Error" -NoConsoleOutput
+}
+# increment $script:taskNumber after the function call
+$script:taskNumber++
+# Task 3: Check if credential folder exists
+Write-Host "`n$Spaces$($taskNumber). Checking for credential folder:`n" -ForegroundColor Magenta
+# Log the task
+Write-Log -Message "Checking for credential folder." -Level "Info" -NoConsoleOutput
+# Check if the credential folder exists, if not say it at console and create it, if already exist say it at console
+if (Test-Path -Path $credentialFolder) {
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Credential folder already exists at:" -NoNewline -ForegroundColor DarkGray
+    Write-Host " $credentialFolder" -ForegroundColor Yellow
+    # Write a message to the log file
+    Write-Log -Message "Credential folder already exists at $credentialFolder" -Level "Info" -NoConsoleOutput
+}
+else {
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Credential folder does not exist." -NoNewline -ForegroundColor Red
+    Write-Host " Creating now..." -ForegroundColor DarkGray
+    Write-Log -Message "Credential folder does not exist, creating now..." -Level "Info" -NoConsoleOutput
+    # Create the credential folder if it does not exist already
+    New-Item -ItemType Directory -Path $credentialFolder | Out-Null
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Credential folder created at:" -NoNewline -ForegroundColor DarkGray
+    Write-Host " $credentialFolder" -ForegroundColor Green
+    # Write a message to the log file
+    Write-Log -Message "Credential folder created at $credentialFolder" -Level "OK" -NoConsoleOutput
+}
+# Define the path to the credential file
+$credentialFile = Join-Path -Path $credentialFolder -ChildPath "credential.txt"
+# increment $script:taskNumber after the function call
+$script:taskNumber++
+# Task 4: Check CSV & Excel Folders exists.
+Write-Host "`n$Spaces$($taskNumber). Check CSV & Excel Folders exists:`n" -ForegroundColor Magenta
+# Check if the credential file exists
+if (-not (Test-Path -Path $credentialFile)) {
+    # Prompt the user to enter their login and password
+    $credential = Get-Credential -Message "Please enter your login and password."
+    # Save the credential to the credential file
+    $credential | Export-Clixml -Path $credentialFile
+}
+else {
+    # Load the credential from the credential file
+    $credential = Import-Clixml -Path $credentialFile
+}
+# Define the directories for the CSV and Excel files
+$csvDir = Join-Path -Path $script:ReportsDir -ChildPath 'CSV'
+$excelDir = Join-Path -Path $script:ReportsDir -ChildPath 'Excel'
+# Check if the CSV directory exists
+if (Test-Path -Path $csvDir) {
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "CSV directory already exists at:" -NoNewline -ForegroundColor DarkGray
+    write-host " $csvDir" -ForegroundColor Yellow
+    # Write a message to the log file
+    Write-Log -Message "CSV directory already exists at $csvDir" -Level "Info" -NoConsoleOutput
+}
+else {
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "CSV directory does not exist." -NoNewline -ForegroundColor Red
+    Write-Host " Creating now..." -ForegroundColor DarkGray
+    Write-Log -Message "CSV directory does not exist, creating now..." -Level "Info" -NoConsoleOutput
+    # Create the CSV directory if it does not exist already
+    New-Item -ItemType Directory -Path $csvDir | Out-Null
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "CSV directory created at:" -NoNewline -ForegroundColor DarkGray
+    Write-Host " $csvDir" -ForegroundColor Green
+    # Write a message to the log file
+    Write-Log -Message "CSV directory created at $csvDir" -Level "OK" -NoConsoleOutput
+}
+# Check if the Excel directory exists
+if (Test-Path -Path $excelDir) {
+    # Write a message to the console
+    write-host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Excel directory already exists at:" -NoNewline -ForegroundColor DarkGray
+    write-host " $excelDir" -ForegroundColor Yellow
+    # Write a message to the log file
+    Write-Log -Message "Excel directory already exists at $excelDir" -Level "Info" -NoConsoleOutput
+}
+else {
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Excel directory does not exist at" -NoNewline -ForegroundColor Red
+    Write-Host " $excelDir" -ForegroundColor DarkGray
+    # Write a message to the log file
+    Write-Log -Message "Excel directory does not exist at $excelDir, creating now..." -Level "Info" -NoConsoleOutput
+    # Create the Excel directory if it does not exist already
+    New-Item -ItemType Directory -Path $excelDir | Out-Null
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Excel directory created at:" -NoNewline -ForegroundColor DarkGray
+    Write-Host " $excelDir" -ForegroundColor Green
+    # Write a message to the log file
+    Write-Log -Message "Excel directory created at $excelDir" -Level "OK" -NoConsoleOutput
+}
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Data collection]-----------------------------------------------------------------
 # Initialize an array to hold the collected data
 $data = @()
-
 # Log file for errors
-$logFile = Join-Path -Path $scriptPath -ChildPath "error_log.txt"
-
+$logFile = Join-Path -Path $scriptDirectory -ChildPath "error_log.txt"
 # Define credentials for connecting to OneView appliances
 $credential = Get-Credential -Message "Enter OneView credentials"
-
 # Loop through each appliance and retrieve the required information
 foreach ($appliance in $appliances) {
     $fqdn = $appliance.Appliance_FQDN
     try {
         # Connect to the OneView appliance
         Connect-OVMgmt -Hostname $fqdn -Credential $credential
-
         # Get the server objects for Gen10 servers
         $servers = Get-OVServer | Where-Object { $_.model -match 'Gen10' }
-
         foreach ($server in $servers) {
             # Construct the URI for local storage details
             $localStorageUri = $server.uri + '/localStorage'
-
             # Retrieve the local storage details (using Send-OVRequest)
             $localStorageDetails = Send-OVRequest -Uri $localStorageUri -Method GET
-
             # Check if localStorageDetails is not null
             if ($null -ne $localStorageDetails) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
@@ -62,20 +310,18 @@ foreach ($appliance in $appliances) {
                         DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
                         DriveInterfaceType         = $drive.InterfaceType
                         DriveMediaType             = $drive.MediaType
-                        DriveLocation              = $drive.Location
+                        DriveLocation              = $drive.Location.LocationEntries
                         DriveModel                 = $drive.Model
                         DriveSerialNumber          = $drive.SerialNumber
                         DriveStatus                = $drive.Status.Health
                         DriveState                 = $drive.Status.State
                         "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
                     }
-
                     # Add the collected information to the data array
                     $data += $info
                 }
             }
         }
-
         Disconnect-OVMgmt -Hostname $fqdn
     }
     catch {
@@ -84,17 +330,13 @@ foreach ($appliance in $appliances) {
         $errorMessage | Add-Content -Path $logFile
     }
 }
-
 # Sorting and exporting data to CSV and Excel
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
-
 # Export data to CSV file (append mode)
-$sortedData | Export-Csv -Path "$scriptPath\LocalStorageDetails.csv" -NoTypeInformation -Append
-
+$sortedData | Export-Csv Join-Path -Path $scriptDirectory -ChildPath "LocalStorageDetails.csv" -NoTypeInformation -Append
 # Export data to Excel file (append mode)
-$sortedData | Export-Excel -Path "$scriptPath\LocalStorageDetails.xlsx" -Show -AutoSize -Append
-
+$sortedData | Export-Excel -Path "$scriptDirectory\LocalStorageDetails.xlsx" -Show -AutoSize -Append
 # Display completion message to the user with the path to the exported files
 Write-Host "`t• Data collection completed. The data has been exported to the following files:"
-Write-Host "`t• CSV file: $scriptPath\LocalStorageDetails.csv" -ForegroundColor Green
-Write-Host "`t• Excel file: $scriptPath\LocalStorageDetails.xlsx" -ForegroundColor Green
+Write-Host "`t• CSV file: $scriptDirectory\LocalStorageDetails.csv" -ForegroundColor Green
+Write-Host "`t• Excel file: $scriptDirectory\LocalStorageDetails.xlsx" -ForegroundColor Green
