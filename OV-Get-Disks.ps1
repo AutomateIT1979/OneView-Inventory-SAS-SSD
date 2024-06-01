@@ -338,45 +338,22 @@ foreach ($appliance in $appliances) {
 Write-Host "`n$Spaces$($taskNumber). Closing Excel:`n" -ForegroundColor DarkGreen
 # Log the task
 Write-Log -Message "Closing Excel." -Level "Info" -NoConsoleOutput
-# Close all Excel workbooks
-function Save-AllExcelWorkbooks {
-    param(
-        [Parameter(Mandatory = $false, HelpMessage = "Specifies the save format (e.g., 'xlsx', 'xlsm', 'xlsb'). Defaults to the current format.")]
-        [string]$SaveFormat,
-        [Parameter(Mandatory = $false, HelpMessage = "Filters Excel processes by name (e.g., '*.xlsx').")]
-        [string]$Filter = "*"
-    )
-    try {
-        # Try to get an existing Excel application instance
-        $excel = [Runtime.Interopservices.Marshal]::GetActiveObject('Excel.Application')
-    } catch {
-        # If there isn't one, create a new one
-        $excel = New-Object -ComObject Excel.Application
+# Get all Excel processes
+$excelProcesses = Get-Process -Name Excel -ErrorAction SilentlyContinue
+
+# If there are any Excel processes
+if ($excelProcesses) {
+    # Stop all Excel processes
+    $excelProcesses | ForEach-Object {
+        Stop-Process -Id $_.Id -Force
     }
-    $excel.Visible = $false
-    $workbooks = $excel.Workbooks
-    if ($workbooks.Count -gt 0) {
-        Write-Output "Found the following Excel workbooks:"
-        for ($i = 1; $i -le $workbooks.Count; $i++) {
-            $workbook = $workbooks.Item($i)
-            Write-Output "Workbook: $($workbook.FullName)"
-            if ($SaveFormat) {
-                $workbook.SaveAs($workbook.FullName, $SaveFormat)
-                Write-Output "Saved $($workbook.FullName) as $SaveFormat"
-            } else {
-                $workbook.Save()
-                Write-Output "Saved $($workbook.FullName)"
-            }
-        }
-    } else {
-        Write-Output "No Excel workbooks found."
-    }
-    $excel.Quit()
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
-    Remove-Variable excel
+
+    # Write a message to the console
+    Write-Host "All running Excel processes have been closed."
+} else {
+    # Write a message to the console
+    Write-Host "No Excel processes are currently running."
 }
-# Close all Excel workbooks
-Save-AllExcelWorkbooks
 # Sorting and exporting data to CSV and Excel
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
 # Export data to CSV file (append mode)
