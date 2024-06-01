@@ -127,7 +127,7 @@ function Import-ModulesIfNotExists {
 }
 # Import the required modules
 # Link to HPE OneView PowerShell Library: https://www.powershellgallery.com/packages/HPEOneView.800/8.0.3642.2784
-Import-ModulesIfNotExists -ModuleNames 'HPEOneView.600', 'Microsoft.PowerShell.Security', 'Microsoft.PowerShell.Utility', 'ImportExcel'
+Import-ModulesIfNotExists -ModuleNames 'HPEOneView.660', 'Microsoft.PowerShell.Security', 'Microsoft.PowerShell.Utility', 'ImportExcel'
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Appliances list]-----------------------------------------------------------------
 # Task 2: import Appliances list from the CSV file.
@@ -198,6 +198,8 @@ else {
 $credentialFile = Join-Path -Path $credentialFolder -ChildPath "credential.txt"
 # increment $script:taskNumber after the function call
 $script:taskNumber++
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Check CSV & Excel Folders exists]------------------------------------------------
 # Task 4: Check CSV & Excel Folders exists.
 Write-Host "`n$Spaces$($taskNumber). Check CSV & Excel Folders exists:`n" -ForegroundColor DarkGreen
 # Check if the credential file exists
@@ -263,6 +265,8 @@ else {
     # Write a message to the log file
     Write-Log -Message "Excel directory created at $excelDir" -Level "OK" -NoConsoleOutput
 }
+# Increment $script:taskNumber after the function call
+$script:taskNumber++
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Data collection]-----------------------------------------------------------------
 # Initialize an array to hold the collected data
@@ -328,12 +332,60 @@ foreach ($appliance in $appliances) {
         $errorMessage | Add-Content -Path $logFile
     }
 }
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Close Excel]---------------------------------------------------------------------
+# Task 5: Closing Excel
+Write-Host "`n$Spaces$($taskNumber). Closing Excel:`n" -ForegroundColor DarkGreen
+# Log the task
+Write-Log -Message "Closing Excel." -Level "Info" -NoConsoleOutput
+# Close all Excel workbooks
+function Save-AllExcelWorkbooks {
+    param(
+        [Parameter(Mandatory = $false, HelpMessage = "Specifies the save format (e.g., 'xlsx', 'xlsm', 'xlsb'). Defaults to the current format.")]
+        [string]$SaveFormat,
+        [Parameter(Mandatory = $false, HelpMessage = "Filters Excel processes by name (e.g., '*.xlsx').")]
+        [string]$Filter = "*"
+    )
+    $excelProcesses = Get-Process | Where-Object { 
+        $_.ProcessName -eq "EXCEL" -and $_.MainWindowTitle -like "*$Filter*"
+    }
+    if ($excelProcesses) {
+        Write-Output "Found the following Excel processes:"
+        $excelProcesses | Format-Table Id, MainWindowTitle
+        foreach ($process in $excelProcesses) {
+            try {
+                $excel = New-Object -ComObject Excel.Application -ErrorAction Stop
+                $excel.Visible = $false
+                $workbook = $excel.Workbooks.Item($process.MainWindowTitle)
+                if ($workbook) {
+                    if ($SaveFormat) {
+                        $workbook.SaveAs([ref] $workbook.FullName, [ref] $SaveFormat)
+                        Write-Output "Saved $($workbook.FullName) as $SaveFormat"
+                    } else {
+                        $workbook.Save()
+                        Write-Output "Saved $($workbook.FullName)"
+                    }
+                } else {
+                    Write-Warning "Could not access workbook for process $($process.Id) - $($process.MainWindowTitle)"
+                }
+                $excel.Quit()
+            } catch {
+                Write-Warning "Failed to save or access workbook for process $($process.Id) - $($process.MainWindowTitle): $($_.Exception.Message)"
+            } finally {
+                [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
+                Remove-Variable excel
+            }
+        }
+    } else {
+        Write-Output "No Excel processes found matching the filter '$Filter'."
+    }
+}
 # Sorting and exporting data to CSV and Excel
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
 # Export data to CSV file (append mode)
-$sortedData | Export-Csv -Path (Join-Path $scriptDirectory -ChildPath "LocalStorageDetails.csv") -NoTypeInformation -Append
+$sortedData | Export-Csv -Path (Join-Path $csvDir -ChildPath "LocalStorageDetails.csv") -NoTypeInformation -Append
 # Export data to Excel file (append mode)
-$sortedData | Export-Excel -Path (Join-Path $scriptDirectory -ChildPath "LocalStorageDetails.xlsx") -AutoSize -Append
+$sortedData | Export-Excel -Path (Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx") -AutoSize -Append
 # Colorize the Excel file
 # Get unique serial numbers from the sorted data
 $serialNumbers = $sortedData.ServerSerialNumber | Get-Unique
@@ -349,7 +401,3 @@ foreach ($serialNumber in $serialNumbers) {
 # Save and close the Excel file
 $excel | Save-ExcelPackage -Path $excelFilePath
 $excel.Dispose()
-# Display completion message to the user with the path to the exported files
-Write-Host "`t• Data collection completed. The data has been exported to the following files:"
-Write-Host "`t• CSV file: $scriptDirectory\LocalStorageDetails.csv" -ForegroundColor Green
-Write-Host "`t• Excel file: $scriptDirectory\LocalStorageDetails.xlsx" -ForegroundColor Green
