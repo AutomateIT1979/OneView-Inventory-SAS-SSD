@@ -98,6 +98,6 @@ $sortedData = $dataCollection | Sort-Object -Property ApplianceFQDN, BayNumber -
 $sortedData | Export-Csv -Path "$scriptPath\LocalStorageDetails.csv" -NoTypeInformation
 $sortedData | Export-Excel -Path "$scriptPath\LocalStorageDetails.xlsx" -Show -AutoSize
 # Display completion message to the user with the path to the exported files, taking into account the script path and file names, output design and color formatting for better readability and user experience
-Write-Host "Data collection completed. The data has been exported to the following files:"
-Write-Host "CSV file: $scriptPath\LocalStorageDetails.csv" -ForegroundColor Green
-Write-Host "Excel file: $scriptPath\LocalStorageDetails.xlsx" -ForegroundColor Green
+Write-Host "`t• Data collection completed. The data has been exported to the following files:"
+Write-Host "`t• CSV file: $scriptPath\LocalStorageDetails.csv" -ForegroundColor Green
+Write-Host "`t• Excel file: $scriptPath\LocalStorageDetails.xlsx" -ForegroundColor Green
