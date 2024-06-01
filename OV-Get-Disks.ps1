@@ -349,29 +349,39 @@ if ($excelProcesses) {
     }
 
     # Write a message to the console
-    Write-Host "All running Excel processes have been closed."
+    Write-Host "`t• All running Excel processes have been closed." -NoNewline -ForegroundColor DarkGray
+    Write-Host " ✔" -ForegroundColor Green
 } else {
     # Write a message to the console
-    Write-Host "No Excel processes are currently running."
+    Write-Host "No Excel processes are currently running."-NoNewline -ForegroundColor DarkGray
+    Write-Host " ℹ" -ForegroundColor Cyan
 }
 # Sorting and exporting data to CSV and Excel
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
+
 # Export data to CSV file (append mode)
-$sortedData | Export-Csv -Path (Join-Path $csvDir -ChildPath "LocalStorageDetails.csv") -NoTypeInformation -Append
+$csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
+$sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
+
 # Export data to Excel file (append mode)
-$sortedData | Export-Excel -Path (Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx") -AutoSize -Append
-# Colorize the Excel file
+$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
+$sortedData | Export-Excel -Path $excelPath -AutoSize -Append
+
+# Open the Excel file and apply conditional formatting
+$xlsx = Import-Excel -Path $excelPath
+$ws = $xlsx.Workbook.Worksheets[0]  # Assuming the first worksheet
+$ws.View.ShowGridLines = $false  # Hide gridlines
+
 # Get unique serial numbers from the sorted data
 $serialNumbers = $sortedData.ServerSerialNumber | Get-Unique
-# Open the Excel file
-$excel = Open-ExcelPackage -Path $excelFilePath
-# Loop through each serial number and apply conditional formatting
+
+# Apply conditional formatting
 foreach ($serialNumber in $serialNumbers) {
     $color = Get-Random -Minimum 0 -Maximum 16777215  # Generate a random color
-    Set-ExcelConditionalFormatting -Workbook $excel -WorksheetName "Sheet1" -Range "A1:F100" `
-        -ConditionalFormattingType Expression -ConditionalFormattingOperator Equal `
-        -ConditionalFormattingFormula "=E1=`"$serialNumber`"" -BackgroundColor "#$($color.ToString('X'))"
+    $ws.Cells["A1:F100"].Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+    $ws.Cells["A1:F100"].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb($color))
 }
+
 # Save and close the Excel file
-$excel | Save-ExcelPackage -Path $excelFilePath
-$excel.Dispose()
+Save-Excel -ExcelPackage $xlsx -Path $excelPath
+Close-ExcelPackage $xlsx
