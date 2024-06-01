@@ -34,7 +34,7 @@ foreach ($appliance in $appliancesList) {
         Write-Host "Connecting to OneView appliance: $fqdn" -ForegroundColor Green
         $connectedSession = Connect-OVMgmt -Hostname $fqdn -Credential (Get-Credential -Message "Enter OneView credentials")
 
-        $servers = Get-OVServer -Connection $connectedSession | Where-Object { $_.model -match 'Gen10' }
+        $servers = Get-OVServer -ApplianceConnection $connectedSession | Where-Object { $_.model -match 'Gen10' }
 
         foreach ($server in $servers) {
             $localStorageUri = $server.uri + '/localStorage'
