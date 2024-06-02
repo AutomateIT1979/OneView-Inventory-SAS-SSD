@@ -361,39 +361,47 @@ else {
 }
 # Import data to Excel file (append mode)
 $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
+# Define the worksheet name in the Excel file to store the data
 $worksheetName = "LocalStorageDetails"
+# Export the data to an Excel file using the ImportExcel module and apply a VBA macro to highlight selected cells
+try {
+    if (Test-Path -Path $csvPath) {
+        $excelParams = @{
+            Path          = $excelPath
+            AutoSize      = $true
+            BoldTopRow    = $true
+            WorksheetName = $worksheetName
+            PassThru      = $true
+        }
+        $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
+        $ws = $xlsx.Workbook.Worksheets[$worksheetName]
+        $ws.View.ShowGridLines = $false
 
-if (Test-Path -Path $csvPath) {
-    $excelParams = @{
-        Path          = $excelPath
-        AutoSize      = $true
-        BoldTopRow    = $true
-        WorksheetName = $worksheetName
-        PassThru      = $true
-    }
-    $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
-    $ws = $xlsx.Workbook.Worksheets[$worksheetName]
-    $ws.View.ShowGridLines = $false
-
-    # Delete the default worksheet
-    $defaultWorksheet = $xlsx.Workbook.Worksheets["Sheet1"]
-    $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
-
-    # Add VBA macro to highlight selected cells
-    $vbaCode = @"
-    Sub HighlightSelectedCells()
-        Dim selectedRange As Range
-        Set selectedRange = Selection
-        selectedRange.Interior.Color = RGB(255, 255, 0) ' Yellow color
-    End Sub
+        # Add VBA macro to highlight selected cells
+        $vbaCode = @"
+        Sub HighlightSelectedCells()
+            Dim selectedRange As Range
+            Set selectedRange = Selection
+            selectedRange.Interior.Color = RGB(255, 255, 0) ' Yellow color
+        End Sub
 "@
-    $vbaModule = $xlsx.Workbook.VBProject.VBComponents.Add(1)
-    $vbaModule.CodeModule.AddFromString($vbaCode)
+        $vbaModule = $xlsx.Workbook.VBProject.VBComponents.Add(1)
+        $vbaModule.CodeModule.AddFromString($vbaCode)
 
-    # Assign the macro to a button or shape for execution
-    $ws.Shapes.AddShape(9, 10, 10, 80, 30).OnAction = "HighlightSelectedCells"
+        # Assign the macro to a button or shape for execution
+        $buttonTop = 10
+        $buttonLeft = 10
+        $buttonWidth = 80
+        $buttonHeight = 30
+        $button = $ws.Buttons.Add($buttonLeft, $buttonTop, $buttonWidth, $buttonHeight)
+        $button.OnAction = "HighlightSelectedCells"
+        $button.Text = "Highlight"
 
-    # Save and close the Excel file
-    $xlsx.Save()
-    $xlsx.Dispose()
+        # Save and close the Excel file
+        $xlsx.Save()
+        $xlsx.Dispose()
+    }
+}
+catch {
+    Write-Warning "Failed to import data to Excel and apply VBA macro."
 }
