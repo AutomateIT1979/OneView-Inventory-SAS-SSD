@@ -384,59 +384,69 @@ else {
     Write-Host "No Excel processes are currently running."-NoNewline -ForegroundColor DarkGray
     Write-Host " ℹ" -ForegroundColor Cyan
 }
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Export Data to Excel]------------------------------------------------------------
+# Task 6: Export Data to Excel
+Write-Host "`n$Spaces$($taskNumber). Exporting Data to Excel:`n" -ForegroundColor DarkGreen
+# Log the task
+Write-Log -Message "Exporting Data to Excel." -Level "Info" -NoConsoleOutput
+# Increment $script:taskNumber after the function call
+$script:taskNumber++
 # Sorting and exporting data to CSV and Excel
-if ($data) {
-    $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
-
-    # Export data to CSV file (append mode)
-    $csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
-    $csvExported = $false
-    $csvExportAttempts = 0
-
-    while (-not $csvExported -and $csvExportAttempts -lt 3) {
-        try {
-            $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
-            $csvExported = $true
-        }
-        catch {
-            Write-Warning "Failed to export data to the CSV file. Retrying..."
-            Start-Sleep -Seconds 1
-            $csvExportAttempts++
-        }
+$sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
+# Export data to CSV file (append mode)
+$csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
+$csvExported = $false
+while (-not $csvExported) {
+    try {
+        $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
+        $csvExported = $true
     }
-
-    if ($csvExported) {
-        # Import data to Excel file (append mode) and apply conditional formatting if the CSV file is accessible
-        $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
-        $worksheetName = "LocalStorageDetails"
-
-        if (Test-Path -Path $csvPath) {
-            $excelParams = @{
-                Path          = $excelPath
-                AutoSize      = $true
-                TableStyle    = 'Medium11'
-                BoldTopRow    = $true
-                WorksheetName = $worksheetName
-                PassThru      = $true
-            }
-
-            if (Get-Module -ListAvailable -Name ImportExcel) {
-                Import-Module -Name ImportExcel
-            }
-
-            $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
-
-            # Save and close the Excel file
-            Save-Excel -ExcelPackage $xlsx -Path $excelPath
-        }
-        else {
-            Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
-        }
-    }
-    else {
-        Write-Warning "Failed to export data to the CSV file after multiple attempts. Skipping Excel export."
+    catch {
+        Write-Warning "Failed to export data to the CSV file. Retrying..."
+        Start-Sleep -Seconds 1
     }
 }
-else {
-    Write-Warning "No data found to export. Skipping CSV and Excel export."
+# Import data to Excel file (append mode) and apply VBA macro
+$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
+$worksheetName = "LocalStorageDetails"
+try {
+    if (Test-Path -Path $csvPath) {
+        $excelParams = @{
+            Path          = $excelPath
+            AutoSize      = $true
+            BoldTopRow    = $true
+            WorksheetName = $worksheetName
+            PassThru      = $true
+        }
+        $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
+        $ws = $xlsx.Workbook.Worksheets[$worksheetName]
+        $ws.View.ShowGridLines = $false
+        # Delete the default worksheet
+        $defaultWorksheet = $xlsx.Workbook.Worksheets["Sheet1"]
+        $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
+        # Add VBA macro to highlight selected row and column
+        $vbaCode = @"
+        Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+            Dim selectedRow As Range
+            Dim selectedColumn As Range
+            ' Clear previous highlighting
+            Cells.Interior.ColorIndex = xlNone
+            ' Highlight selected row
+            Set selectedRow = Rows(Target.Row)
+            selectedRow.Interior.Color = RGB(255, 255, 0) ' Yellow color
+            ' Highlight selected column
+            Set selectedColumn = Columns(Target.Column)
+            selectedColumn.Interior.Color = RGB(255, 255, 0) ' Yellow color
+        End Sub
+"@
+        $vbaModule = $xlsx.VbaProject.Modules.Add("Module1")
+        $vbaModule.CodeModule.AddFromString($vbaCode)
+        # Save and close the Excel file
+        $xlsx.Save()
+        $xlsx.Dispose()
+    }
+}
+catch {
+    Write-Warning "Failed to import data to Excel and apply VBA macro."
 }
