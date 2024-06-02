@@ -292,7 +292,7 @@ foreach ($appliance in $appliances) {
                     $info = [PSCustomObject]@{
                         ApplianceFQDN              = $fqdn
                         ServerName = $server.serverName 
-                        #Name                 = $server.Name
+                        BayNumber                 = $server.Name.Split(', ')[1]
                         ServerStatus               = $server.Status
                         ServerPower                = $server.PowerState
                         ServerSerialNumber         = $server.SerialNumber
