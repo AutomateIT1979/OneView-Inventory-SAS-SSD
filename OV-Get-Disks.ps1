@@ -376,53 +376,24 @@ while (-not $csvExported) {
     }
 }
 
-# Import data to Excel file (append mode) and apply VBA macro
+# Import data to Excel file
 $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
 $worksheetName = "LocalStorageDetails"
 
-try {
-    if (Test-Path -Path $csvPath) {
-        $excelParams = @{
-            Path          = $excelPath
-            AutoSize      = $true
-            BoldTopRow    = $true
-            WorksheetName = $worksheetName
-            PassThru      = $true
-        }
-        $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
-        $ws = $xlsx.Workbook.Worksheets[$worksheetName]
-        $ws.View.ShowGridLines = $false
-
-        # Delete the default worksheet
-        $defaultWorksheet = $xlsx.Workbook.Worksheets["Sheet1"]
-        $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
-
-        # Add VBA macro to highlight selected row and column
-        $vbaCode = @"
-        Private Sub Worksheet_SelectionChange(ByVal Target As Range)
-            Dim selectedRow As Range
-            Dim selectedColumn As Range
-
-            ' Clear previous highlighting
-            Cells.Interior.ColorIndex = xlNone
-
-            ' Highlight selected row
-            Set selectedRow = Rows(Target.Row)
-            selectedRow.Interior.Color = RGB(255, 255, 0) ' Yellow color
-
-            ' Highlight selected column
-            Set selectedColumn = Columns(Target.Column)
-            selectedColumn.Interior.Color = RGB(255, 255, 0) ' Yellow color
-        End Sub
-"@
-        $vbaModule = $xlsx.VbaProject.Modules.Add("Module1")
-        $vbaModule.CodeModule.AddFromString($vbaCode)
-
-        # Save and close the Excel file
-        $xlsx.Save()
-        $xlsx.Dispose()
+if (Test-Path -Path $csvPath) {
+    $excelParams = @{
+        Path          = $excelPath
+        AutoSize      = $true
+        TableStyle    = 'Medium11'
+        BoldTopRow    = $true
+        WorksheetName = $worksheetName
+        PassThru      = $true
     }
-}
-catch {
-    Write-Warning "Failed to import data to Excel and apply VBA macro."
+    $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
+    $ws = $xlsx.Workbook.Worksheets[$worksheetName]
+    $ws.View.ShowGridLines = $false
+
+    # Save and close the Excel file
+    $xlsx.Save()
+    $xlsx.Dispose()
 }
