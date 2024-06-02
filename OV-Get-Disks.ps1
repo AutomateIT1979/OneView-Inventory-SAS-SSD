@@ -412,44 +412,36 @@ $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
 $worksheetName = "LocalStorageDetails"
 try {
     if (Test-Path -Path $csvPath) {
-        $excelParams = @{
-            Path          = $excelPath
-            AutoSize      = $true
-            BoldTopRow    = $true
-            WorksheetName = $worksheetName
-            PassThru      = $true
-        }
-        $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
-        if ($null -ne $xlsx) {
-            $ws = $xlsx.Workbook.Worksheets[$worksheetName]
-            $ws.View.ShowGridLines = $false
-            # Delete the default worksheet
-            $defaultWorksheet = $xlsx.Workbook.Worksheets[$worksheetName]
-            $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
-            # Add VBA macro to highlight selected row and column
-            $vbaCode = @"
-            Private Sub Worksheet_SelectionChange(ByVal Target As Range)
-                Dim selectedRow As Range
-                Dim selectedColumn As Range
-                ' Clear previous highlighting
-                Cells.Interior.ColorIndex = xlNone
-                ' Highlight selected row
-                Set selectedRow = Rows(Target.Row)
-                selectedRow.Interior.Color = RGB(255, 255, 0) ' Yellow color
-                ' Highlight selected column
-                Set selectedColumn = Columns(Target.Column)
-                selectedColumn.Interior.Color = RGB(255, 255, 0) ' Yellow color
-            End Sub
+        $excel = New-Object -ComObject Excel.Application
+        $excel.Visible = $false
+        $excel.DisplayAlerts = $false
+        $workbook = $excel.Workbooks.Open($csvPath)
+        $worksheet = $workbook.Worksheets.Item(1)
+        # Rename worksheet
+        $worksheet.Name = $worksheetName
+        # Add VBA macro to highlight selected row and column
+        $vbaCode = @"
+        Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+            Dim selectedRow As Range
+            Dim selectedColumn As Range
+            ' Clear previous highlighting
+            Cells.Interior.ColorIndex = xlNone
+            ' Highlight selected row
+            Set selectedRow = Rows(Target.Row)
+            selectedRow.Interior.Color = RGB(255, 255, 0) ' Yellow color
+            ' Highlight selected column
+            Set selectedColumn = Columns(Target.Column)
+            selectedColumn.Interior.Color = RGB(255, 255, 0) ' Yellow color
+        End Sub
 "@
-            $vbaModule = $xlsx.VbaProject.Modules.Add("Module1")
-            $vbaModule.CodeModule.AddFromString($vbaCode)
-            # Save and close the Excel file
-            $xlsx.Save()
-            $xlsx.Dispose()
-        }
-        else {
-            Write-Warning "Failed to import data to Excel. The Excel package is null."
-        }
+        $vbaModule = $workbook.VBProject.VBComponents.Add(1)
+        $vbaModule.CodeModule.AddFromString($vbaCode)
+        # Save and close the Excel file
+        $workbook.SaveAs($excelPath)
+        $workbook.Close()
+        # Quit Excel application
+        $excel.Quit()
+        Write-Output "Excel file saved successfully."
     }
     else {
         Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
