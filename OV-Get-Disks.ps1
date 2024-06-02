@@ -290,8 +290,10 @@ foreach ($appliance in $appliances) {
             if ($null -ne $localStorageDetails) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     $info = [PSCustomObject]@{
-                                                ApplianceFQDN              = $fqdn
-                        ServerName                 = $server.Name
+                        ApplianceFQDN              = $fqdn
+                        $bayNumber                 = $server.Name.Split(', ')[1]
+                        $ServerName                 = $server.serverName
+                        $OperatingSystem            = $server.OperatingSystem
                         ServerStatus               = $server.Status
                         ServerPower                = $server.PowerState
                         ServerSerialNumber         = $server.SerialNumber
@@ -307,7 +309,7 @@ foreach ($appliance in $appliances) {
                         Model                      = $localStorageDetails.Data.Model
                         DriveBlockSizeBytes        = $drive.BlockSizeBytes
                         # Calculate the logical capacity in GB
-                        LogicalCapacityGB = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
+                        LogicalCapacityGB          = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
                         DriveEncryptedDrive        = $drive.EncryptedDrive
                         DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
                         DriveInterfaceType         = $drive.InterfaceType
@@ -348,57 +350,79 @@ if ($excelProcesses) {
     }
     # Write a message to the console
     Write-Host "`t• All running Excel processes have been closed." -NoNewline -ForegroundColor DarkGray
-    Write-Host " ✔" -ForegroundColor Green
-} else {
+    # Write a checkmark to the console
+    Write-Host "`u{2714}" -ForegroundColor Green
+}
+else {
     # Write a message to the console
-    Write-Host "No Excel processes are currently running."-NoNewline -ForegroundColor DarkGray
-    Write-Host " ℹ" -ForegroundColor Cyan
+    Write-Host "`t• No Excel processes are currently running."-NoNewline -ForegroundColor DarkGray
+    # Write a checkmark to the console
+    Write-Host ([char]9) -ForegroundColor Cyan
 }
 # Sorting and exporting data to CSV and Excel
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
+
 # Export data to CSV file (append mode)
 $csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
 $csvExported = $false
-
 while (-not $csvExported) {
     try {
         $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
         $csvExported = $true
-    } catch {
+    }
+    catch {
         Write-Warning "Failed to export data to the CSV file. Retrying..."
         Start-Sleep -Seconds 1
     }
 }
 
-# Import data to Excel file (append mode) and apply conditional formatting if the CSV file is accessible
+# Import data to Excel file (append mode) and apply VBA macro
 $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
 $worksheetName = "LocalStorageDetails"
 
-if (Test-Path -Path $csvPath) {
-    $excelParams = @{
-        Path          = $excelPath
-        AutoSize      = $true
-        TableStyle    = 'Medium11'
-        BoldTopRow    = $true
-        WorksheetName = $worksheetName
-        PassThru      = $true
+try {
+    if (Test-Path -Path $csvPath) {
+        $excelParams = @{
+            Path          = $excelPath
+            AutoSize      = $true
+            BoldTopRow    = $true
+            WorksheetName = $worksheetName
+            PassThru      = $true
+        }
+        $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
+        $ws = $xlsx.Workbook.Worksheets[$worksheetName]
+        $ws.View.ShowGridLines = $false
+
+        # Delete the default worksheet
+        $defaultWorksheet = $xlsx.Workbook.Worksheets["Sheet1"]
+        $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
+
+        # Add VBA macro to highlight selected row and column
+        $vbaCode = @"
+        Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+            Dim selectedRow As Range
+            Dim selectedColumn As Range
+
+            ' Clear previous highlighting
+            Cells.Interior.ColorIndex = xlNone
+
+            ' Highlight selected row
+            Set selectedRow = Rows(Target.Row)
+            selectedRow.Interior.Color = RGB(255, 255, 0) ' Yellow color
+
+            ' Highlight selected column
+            Set selectedColumn = Columns(Target.Column)
+            selectedColumn.Interior.Color = RGB(255, 255, 0) ' Yellow color
+        End Sub
+"@
+        $vbaModule = $xlsx.VbaProject.Modules.Add("Module1")
+        $vbaModule.CodeModule.AddFromString($vbaCode)
+
+        # Save and close the Excel file
+        $xlsx.Save()
+        $xlsx.Dispose()
     }
-
-    $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
-    $ws = $xlsx.Workbook.Worksheets[$worksheetName]
-    $ws.View.ShowGridLines = $false
-
-    # Get unique serial numbers from the sorted data
-    $serialNumbers = $sortedData.ServerSerialNumber | Get-Unique
-
-    # Apply conditional formatting
-    foreach ($serialNumber in $serialNumbers) {
-        $color = Get-Random -Minimum 0 -Maximum 16777215  # Generate a random color
-        $ws.Cells["A1:F100"].Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
-        $ws.Cells["A1:F100"].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb($color))
-    }
-
-    # Save and close the Excel file
-    Save-Excel -ExcelPackage $xlsx -Path $excelPath
-    Close-ExcelPackage $xlsx
+}
+catch {
+    Write-Warning "Failed to import data to Excel and apply VBA macro."
 }
