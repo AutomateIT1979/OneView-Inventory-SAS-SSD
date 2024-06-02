@@ -291,33 +291,59 @@ foreach ($appliance in $appliances) {
                 foreach ($drive in $localStorageDetails.Data.PhysicalDrives) {
                     $info = [PSCustomObject]@{
                         ApplianceFQDN              = $fqdn
-                        ServerName = $server.serverName 
-                        BayNumber                 = $server.Name.Split(', ')[1]
+                        # Extract the server name and make it in CAPS
+                        ServerName                 = $server.serverName.ToUpper()
+                        # Extract the server bay number 
+                        BayNumber                  = $server.Name.Split(', ')[1]
+                        # Extract the server Status {Critical, Warning, OK}
                         ServerStatus               = $server.Status
+                        # Extract the server Power State {On, Off, Standby}
                         ServerPower                = $server.PowerState
+                        # Extract the server Serial Number
                         ServerSerialNumber         = $server.SerialNumber
+                        # Extract the server Model
                         ServerModel                = $server.Model
+                        # Extract the Adapter Type {HBA, RAID}
                         AdapterType                = $localStorageDetails.Data.AdapterType
-                        CurrentOperatingMode       = $localStorageDetails.Data.CurrentOperatingMode                 
-                        FirmwareVersion            = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
-                        InternalPortCount          = $localStorageDetails.Data.InternalPortCount
-                        Location                   = $localStorageDetails.Data.Location
-                        LocationFormat             = $localStorageDetails.Data.LocationFormat                      
-                        LogicalDriveNumbers        = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.LogicalDriveNumber }) -join ', '
-                        RaidValues                 = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.Raid }) -join ', '
+                        # Extract the Model of the Adapter
                         Model                      = $localStorageDetails.Data.Model
+                        # Extract the Current Operating Mode {RAID, HBA}
+                        CurrentOperatingMode       = $localStorageDetails.Data.CurrentOperatingMode
+                        # Extract the Firmware Version of the Adapter                 
+                        FirmwareVersion            = $localStorageDetails.Data.FirmwareVersion.Current.VersionString
+                        # Extract the Internal Port Count of the Adapter
+                        InternalPortCount          = $localStorageDetails.Data.InternalPortCount
+                        # Extract the location of the adapter {Slot}
+                        Location                   = $localStorageDetails.Data.Location
+                        # Extract the Location Format {PCI}
+                        LocationFormat             = $localStorageDetails.Data.LocationFormat
+                        # Extract the Logical Drive Count
+                        LogicalDriveNumbers        = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.LogicalDriveNumber }) -join ', '
+                        # Extract the RAID Values {RAID 1, RAID 5, RAID 6}
+                        RaidValues                 = ($localStorageDetails.Data.LogicalDrives | ForEach-Object { $_.Raid }) -join ', '
+                        # Extract the Size of the Block in Bytes {512, 4096}
                         DriveBlockSizeBytes        = $drive.BlockSizeBytes
                         # Calculate the logical capacity in GB
-                        LogicalCapacityGB = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
+                        LogicalCapacityGB          = [math]::Round(($drive.CapacityLogicalBlocks * $drive.BlockSizeBytes) / 1e9, 2)
+                        # Check if the drive is encrypted
                         DriveEncryptedDrive        = $drive.EncryptedDrive
+                        # Extract the Firmware Version of the Drive as it should be started with "HP"
                         DriveFirmwareVersion       = $drive.FirmwareVersion.Current.VersionString
+                        # Extract the Interface Type {SAS, SATA}
                         DriveInterfaceType         = $drive.InterfaceType
+                        # Extract the MediaType {SSD, HDD}
                         DriveMediaType             = $drive.MediaType
-                        DriveLocation              = $drive.Location.LocationEntries
+                        # Extract the Location of the Drive {Drive Bay}
+                        DriveLocation              = $drive.Location
+                        # Extract the Model of the Drive
                         DriveModel                 = $drive.Model
+                        # Extract the Serial Number of the Drive
                         DriveSerialNumber          = $drive.SerialNumber
+                        # Extract the Status of the Drive {Critical, Warning, OK}
                         DriveStatus                = $drive.Status.Health
+                        # Extract the State of the Drive {Enabled, Disabled}
                         DriveState                 = $drive.Status.State
+                        # Extract the Life Remaining of the Drive in Percentage
                         "Drive Life Remaining (%)" = "{0}%" -f (100 - $drive.SSDEnduranceUtilizationPercentage)
                     }
                     # Add the collected information to the data array
@@ -325,9 +351,11 @@ foreach ($appliance in $appliances) {
                 }
             }
         }
+        # Disconnect from the OneView appliance
         Disconnect-OVMgmt -Hostname $fqdn
     }
     catch {
+        # Log the error message and continue to the next appliance in the list if an error occurs during data collection
         $errorMessage = "Error processing appliance ${fqdn}: $($_.Exception.Message)"
         Write-Warning $errorMessage
         $errorMessage | Add-Content -Path $logFile
@@ -350,46 +378,65 @@ if ($excelProcesses) {
     # Write a message to the console
     Write-Host "`t• All running Excel processes have been closed." -NoNewline -ForegroundColor DarkGray
     Write-Host " ✔" -ForegroundColor Green
-} else {
+}
+else {
     # Write a message to the console
     Write-Host "No Excel processes are currently running."-NoNewline -ForegroundColor DarkGray
     Write-Host " ℹ" -ForegroundColor Cyan
 }
 # Sorting and exporting data to CSV and Excel
-$sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
-# Export data to CSV file (append mode)
-$csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
-$csvExported = $false
+if ($data) {
+    $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
 
-while (-not $csvExported) {
-    try {
-        $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
-        $csvExported = $true
-    } catch {
-        Write-Warning "Failed to export data to the CSV file. Retrying..."
-        Start-Sleep -Seconds 1
+    # Export data to CSV file (append mode)
+    $csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
+    $csvExported = $false
+    $csvExportAttempts = 0
+
+    while (-not $csvExported -and $csvExportAttempts -lt 3) {
+        try {
+            $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
+            $csvExported = $true
+        }
+        catch {
+            Write-Warning "Failed to export data to the CSV file. Retrying..."
+            Start-Sleep -Seconds 1
+            $csvExportAttempts++
+        }
+    }
+
+    if ($csvExported) {
+        # Import data to Excel file (append mode) and apply conditional formatting if the CSV file is accessible
+        $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
+        $worksheetName = "LocalStorageDetails"
+
+        if (Test-Path -Path $csvPath) {
+            $excelParams = @{
+                Path          = $excelPath
+                AutoSize      = $true
+                TableStyle    = 'Medium11'
+                BoldTopRow    = $true
+                WorksheetName = $worksheetName
+                PassThru      = $true
+            }
+
+            if (Get-Module -ListAvailable -Name ImportExcel) {
+                Import-Module -Name ImportExcel
+            }
+
+            $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
+
+            # Save and close the Excel file
+            Save-Excel -ExcelPackage $xlsx -Path $excelPath
+        }
+        else {
+            Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
+        }
+    }
+    else {
+        Write-Warning "Failed to export data to the CSV file after multiple attempts. Skipping Excel export."
     }
 }
-
-# Import data to Excel file (append mode) and apply conditional formatting if the CSV file is accessible
-$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
-$worksheetName = "LocalStorageDetails"
-
-if (Test-Path -Path $csvPath) {
-    $excelParams = @{
-        Path          = $excelPath
-        AutoSize      = $true
-        TableStyle    = 'Medium11'
-        BoldTopRow    = $true
-        WorksheetName = $worksheetName
-        PassThru      = $true
-    }
-
-    $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
-    $ws = $xlsx.Workbook.Worksheets[$worksheetName]
-    $ws.View.ShowGridLines = $false
-
-    # Save and close the Excel file
-    Save-Excel -ExcelPackage $xlsx -Path $excelPath
-    Close-ExcelPackage $xlsx
+else {
+    Write-Warning "No data found to export. Skipping CSV and Excel export."
 }
