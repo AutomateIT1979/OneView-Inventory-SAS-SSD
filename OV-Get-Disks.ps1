@@ -446,7 +446,10 @@ try {
         $xlsx.Save()
         $xlsx.Dispose()
     }
+    else {
+        Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
+    }
 }
 catch {
-    Write-Warning "Failed to import data to Excel and apply VBA macro."
+    Write-Warning "Failed to import data to Excel and apply VBA macro. Error: $($_.Exception.Message)"
 }
