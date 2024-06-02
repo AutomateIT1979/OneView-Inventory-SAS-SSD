@@ -1,32 +1,28 @@
-AdapterType                                   : SmartArray
-BackupPowerSourceStatus                       : NotPresent
-ControllerBoard                               : @{Status=}
-CurrentOperatingMode                          : Mixed
-DriveWriteCache                               : Disabled
-EncryptionCryptoOfficerPasswordSet            : False
-EncryptionCspTestPassed                       : True
-EncryptionEnabled                             : False
-EncryptionFwLocked                            : False
-EncryptionHasLockedVolumesMissingBootPassword : False
-EncryptionMixedVolumesEnabled                 : False
-EncryptionSelfTestPassed                      : True
-EncryptionStandaloneModeEnabled               : False
-ExternalPortCount                             : 0
-FirmwareVersion                               : @{Current=}
-InternalPortCount                             : 2
-Location                                      : Slot 0
-LocationFormat                                : PCISlot
-LogicalDrives                                 : {@{AccelerationMethod=None; CapacityMiB=457830; DataDrives=System.Object[]; InterfaceType=SATA; LegacyBootPriority=None; LogicalDriveEncryption=False;
-                                                LogicalDriveName=7380e983-6888-41cc-9449-332a855ed57e; LogicalDriveNumber=1; LogicalDriveStatusReasons=System.Object[]; LogicalDriveType=Data; MediaType=SSD; Raid=1; Status=;
-                                                StripeSizeBytes=262144; VolumeUniqueIdentifier=600508B1001C993DA66BFDB70D13C638}}
-Model                                         : HPE Smart Array E208i-c SR Gen10
-Name                                          : Hpe Smart Storage Array Controller
-PhysicalDrives                                : {@{BlockSizeBytes=512; CapacityLogicalBlocks=937703088; CapacityMiB=457862; DiskDriveStatusReasons=System.Object[]; DiskDriveUse=Data; EncryptedDrive=False; FirmwareVersion=;
-                                                InterfaceSpeedMbps=6000; InterfaceType=SATA; LegacyBootPriority=None; Location=1I:1:1; LocationFormat=ControllerPort:Box:Bay; MediaType=SSD; Model=VK000480GZXRF; PowerOnHours=5252;
-                                                SSDEnduranceUtilizationPercentage=0; SerialNumber=S6MPNA0T815063; Status=}, @{BlockSizeBytes=512; CapacityLogicalBlocks=937703088; CapacityMiB=457862;
-                                                DiskDriveStatusReasons=System.Object[]; DiskDriveUse=Data; EncryptedDrive=False; FirmwareVersion=; InterfaceSpeedMbps=6000; InterfaceType=SATA; LegacyBootPriority=None;
-                                                Location=1I:1:2; LocationFormat=ControllerPort:Box:Bay; MediaType=SSD; Model=VK000480GXAWK; PowerOnHours=5348; SSDEnduranceUtilizationPercentage=2; SerialNumber=2303404459F9;
-                                                Status=}}
-SerialNumber                                  : PFFTV0BRHAY074
-Status                                        : @{Health=OK; State=Enabled}
-StorageEnclosures                             : {@{DriveBayCount=4; FirmwareVersion=; Id=0; Location=1I:1; LocationFormat=Port:Box; Status=}}
+WARNING: Error processing appliance mar-d2-bh10-cp.adm.cm.par.emea.cib: A null key is not allowed in a hash literal.
+
+    5. Closing Excel:
+
+        • No Excel processes are currently running.
+ConnectionID Name                               UserName      AuthLoginDomain Default
+------------ ----                               --------      --------------- -------
+1            mar-d2-bh10-cp.adm.cm.par.emea.cib Administrator LOCAL           True
+MethodInvocationException: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:380
+Line |
+ 380 |      $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
+     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Exception calling "Delete" with "1" argument(s): "Object reference not set to an instance of an object."
+InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:390
+Line |
+ 390 |      $vbaModule = $xlsx.Workbook.VBProject.VBComponents.Add(1)
+     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | You cannot call a method on a null-valued expression.
+InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:391
+Line |
+ 391 |      $vbaModule.CodeModule.AddFromString($vbaCode)
+     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | You cannot call a method on a null-valued expression.
+InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:394
+Line |
+ 394 |      $ws.Shapes.AddShape(9, 10, 10, 80, 30).OnAction = "HighlightSelec …
+     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | You cannot call a method on a null-valued expression.
