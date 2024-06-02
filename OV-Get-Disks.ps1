@@ -433,3 +433,45 @@ try {
 catch {
     Write-Warning "Failed to import data to Excel. Error: $($_.Exception.Message)"
 }
+# Apply VBA macro to the Excel file
+if (Test-Path -Path $excelPath) {
+    try {
+        $excel = New-Object -ComObject Excel.Application
+        $excel.Visible = $false
+        $excel.DisplayAlerts = $false
+        $workbook = $excel.Workbooks.Open($excelPath)
+        if ($workbook -ne $null) {
+            $vbaModule = $workbook.VBProject.VBComponents.Add(1)
+            $vbaCode = @"
+            Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+                Dim selectedRow As Range
+                Dim selectedColumn As Range
+                ' Clear previous highlighting
+                Cells.Interior.ColorIndex = xlNone
+                ' Highlight selected row
+                Set selectedRow = Rows(Target.Row)
+                selectedRow.Interior.Color = RGB(255, 255, 0) ' Yellow color
+                ' Highlight selected column
+                Set selectedColumn = Columns(Target.Column)
+                selectedColumn.Interior.Color = RGB(255, 255, 0) ' Yellow color
+            End Sub
+"@
+            $vbaModule.CodeModule.AddFromString($vbaCode)
+            # Save and close the Excel file
+            $workbook.Save()
+            $workbook.Close()
+            # Quit Excel application
+            $excel.Quit()
+            Write-Output "VBA macro applied successfully."
+        }
+        else {
+            Write-Warning "Failed to import data to Excel. The workbook is null."
+        }
+    }
+    catch {
+        Write-Warning "Failed to apply VBA macro to Excel. Error: $($_.Exception.Message)"
+    }
+}
+else {
+    Write-Warning "Excel file not found at $excelPath. Skipping VBA macro application."
+}
