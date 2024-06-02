@@ -292,8 +292,8 @@ foreach ($appliance in $appliances) {
                     $info = [PSCustomObject]@{
                         ApplianceFQDN              = $fqdn
                         $bayNumber                 = $server.Name.Split(', ')[1]
-                        $ServerName                 = $server.serverName
-                        $OperatingSystem            = $server.OperatingSystem
+                        $ServerName                = $server.serverName
+                        $OperatingSystem           = $server.OperatingSystem
                         ServerStatus               = $server.Status
                         ServerPower                = $server.PowerState
                         ServerSerialNumber         = $server.SerialNumber
@@ -359,24 +359,7 @@ else {
     # Write a checkmark to the console
     Write-Host ([char]9) -ForegroundColor Cyan
 }
-# Sorting and exporting data to CSV and Excel
-$sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername -Descending
-
-# Export data to CSV file (append mode)
-$csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
-$csvExported = $false
-while (-not $csvExported) {
-    try {
-        $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
-        $csvExported = $true
-    }
-    catch {
-        Write-Warning "Failed to export data to the CSV file. Retrying..."
-        Start-Sleep -Seconds 1
-    }
-}
-
-# Import data to Excel file
+# Import data to Excel file (append mode)
 $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
 $worksheetName = "LocalStorageDetails"
 
@@ -384,7 +367,6 @@ if (Test-Path -Path $csvPath) {
     $excelParams = @{
         Path          = $excelPath
         AutoSize      = $true
-        TableStyle    = 'Medium11'
         BoldTopRow    = $true
         WorksheetName = $worksheetName
         PassThru      = $true
@@ -392,6 +374,24 @@ if (Test-Path -Path $csvPath) {
     $xlsx = Import-Csv -Path $csvPath | Export-Excel @excelParams
     $ws = $xlsx.Workbook.Worksheets[$worksheetName]
     $ws.View.ShowGridLines = $false
+
+    # Delete the default worksheet
+    $defaultWorksheet = $xlsx.Workbook.Worksheets["Sheet1"]
+    $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
+
+    # Add VBA macro to highlight selected cells
+    $vbaCode = @"
+    Sub HighlightSelectedCells()
+        Dim selectedRange As Range
+        Set selectedRange = Selection
+        selectedRange.Interior.Color = RGB(255, 255, 0) ' Yellow color
+    End Sub
+"@
+    $vbaModule = $xlsx.Workbook.VBProject.VBComponents.Add(1)
+    $vbaModule.CodeModule.AddFromString($vbaCode)
+
+    # Assign the macro to a button or shape for execution
+    $ws.Shapes.AddShape(9, 10, 10, 80, 30).OnAction = "HighlightSelectedCells"
 
     # Save and close the Excel file
     $xlsx.Save()
