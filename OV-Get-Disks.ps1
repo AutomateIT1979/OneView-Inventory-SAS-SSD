@@ -423,7 +423,7 @@ try {
         $ws = $xlsx.Workbook.Worksheets[$worksheetName]
         $ws.View.ShowGridLines = $false
         # Delete the default worksheet
-        $defaultWorksheet = $xlsx.Workbook.Worksheets["Sheet1"]
+        $defaultWorksheet = $xlsx.Workbook.Worksheets[$worksheetName]
         $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
         # Add VBA macro to highlight selected row and column
         $vbaCode = @"
