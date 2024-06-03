@@ -1,2 +1,51 @@
-WARNING:
-        • Failed to import data to Excel. Error: A table cannot overlap a range that contains a PivotTable report, query results, protected cells or another table.
+Dim CurrentRow As Long
+Dim CurrentCol As Long
+
+Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+    Dim ws As Worksheet
+    Set ws = ActiveSheet
+    
+    ' Clear previous formatting
+    If CurrentRow > 0 And CurrentCol > 0 Then
+        With ws.Rows(CurrentRow)
+            .Interior.ColorIndex = xlNone
+            .Borders(xlEdgeTop).LineStyle = xlNone
+            .Borders(xlEdgeBottom).LineStyle = xlNone
+            .Borders(xlEdgeLeft).LineStyle = xlNone
+            .Borders(xlEdgeRight).LineStyle = xlNone
+        End With
+        With ws.Columns(CurrentCol)
+            .Interior.ColorIndex = xlNone
+            .Borders(xlEdgeTop).LineStyle = xlNone
+            .Borders(xlEdgeBottom).LineStyle = xlNone
+            .Borders(xlEdgeLeft).LineStyle = xlNone
+            .Borders(xlEdgeRight).LineStyle = xlNone
+        End With
+    End If
+    
+    ' Apply new formatting
+    CurrentRow = Target.Row
+    CurrentCol = Target.Column
+    With ws.Rows(CurrentRow)
+        .Interior.Color = RGB(204, 236, 255)
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Color = RGB(128, 128, 128)
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Color = RGB(128, 128, 128)
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Color = RGB(128, 128, 128)
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Color = RGB(128, 128, 128)
+    End With
+    With ws.Columns(CurrentCol)
+        .Interior.Color = RGB(204, 236, 255)
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Color = RGB(128, 128, 128)
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Color = RGB(128, 128, 128)
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Color = RGB(128, 128, 128)
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Color = RGB(128, 128, 128)
+    End With
+End Sub
