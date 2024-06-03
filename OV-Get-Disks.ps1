@@ -181,12 +181,25 @@ else {
 # -------------------------------------------------------------- [Credential folder]---------------------------------------------------------------
 # Define the path to the credential folder
 $credentialFolder = Join-Path -Path $parentDirectory -ChildPath "Credential"
-# increment $script:taskNumber after the function call
-$script:taskNumber++
 # Task 3: Check if credential folder exists
 Write-Host "`n$Spaces$($taskNumber). Checking for credential folder:`n" -ForegroundColor DarkGreen
 # Log the task
 Write-Log -Message "Checking for credential folder." -Level "Info" -NoConsoleOutput
+# increment $script:taskNumber after the function call
+$script:taskNumber++
+# Define the path to the credential file
+$credentialFile = Join-Path -Path $credentialFolder -ChildPath "credential.txt"
+# Check if the credential file exists
+if (-not (Test-Path -Path $credentialFile)) {
+    # Prompt the user to enter their login and password
+    $credential = Get-Credential -Message "Please enter your login and password."
+    # Save the credential to the credential file
+    $credential | Export-Clixml -Path $credentialFile
+}
+else {
+    # Load the credential from the credential file
+    $credential = Import-Clixml -Path $credentialFile
+}
 # Check if the credential folder exists, if not say it at console and create it, if already exist say it at console
 if (Test-Path -Path $credentialFolder) {
     # Write a message to the console
@@ -211,8 +224,6 @@ else {
     # Write a message to the log file
     Write-Log -Message "Credential folder created at $credentialFolder" -Level "OK" -NoConsoleOutput
 }
-# Define the path to the credential file
-$credentialFile = Join-Path -Path $credentialFolder -ChildPath "credential.txt"
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Check CSV & Excel Folders exists]------------------------------------------------
 # Task 4: Check CSV & Excel Folders exists.
@@ -221,17 +232,6 @@ Write-Host "`n$Spaces$($taskNumber). Check CSV & Excel Folders exists:`n" -Foreg
 Write-Log -Message "Check CSV & Excel Folders exists." -Level "Info" -NoConsoleOutput
 # Increment $script:taskNumber after the function call
 $script:taskNumber++
-# Check if the credential file exists
-if (-not (Test-Path -Path $credentialFile)) {
-    # Prompt the user to enter their login and password
-    $credential = Get-Credential -Message "Please enter your login and password."
-    # Save the credential to the credential file
-    $credential | Export-Clixml -Path $credentialFile
-}
-else {
-    # Load the credential from the credential file
-    $credential = Import-Clixml -Path $credentialFile
-}
 # Define the directories for the CSV and Excel files
 $csvDir = Join-Path -Path $script:ReportsDir -ChildPath 'CSV'
 $excelDir = Join-Path -Path $script:ReportsDir -ChildPath 'Excel'
@@ -386,6 +386,8 @@ foreach ($appliance in $appliances) {
 Write-Host "`n$Spaces$($taskNumber). Closing Excel:`n" -ForegroundColor DarkGreen
 # Log the task
 Write-Log -Message "Closing Excel." -Level "Info" -NoConsoleOutput
+# Increment $script:taskNumber after the function call
+$script:taskNumber++
 # Get all Excel processes
 $excelProcesses = Get-Process -Name Excel -ErrorAction SilentlyContinue
 # If there are any Excel processes
