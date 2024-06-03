@@ -415,36 +415,26 @@ if (-not $csvExported) {
     Write-Warning "Failed to export data to the CSV file after $maxAttempts attempts. Aborting Excel export."
 }
 else {
+# Import the ImportExcel module
+Import-Module ImportExcel
 # Import data to Excel file
 $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
 $worksheetName = "LocalStorageDetails"
 try {
     if (Test-Path -Path $csvPath) {
-        $excel = New-Object -ComObject Excel.Application
-        $null = $excel.Visible = $false  # Suppress output
-        $excel.DisplayAlerts = $false
-        $workbook = $excel.Workbooks.Add()
-        $worksheet = $workbook.Worksheets.Item(1)
-        # Rename worksheet
-        $worksheet.Name = $worksheetName
-        # Import data from CSV using QueryTables
-        $queryTable = $worksheet.QueryTables.Add("TEXT;" + $csvPath, $worksheet.Range("A1"))
-        $queryTable.TextFileOtherDelimiter = ","
-        $queryTable.TextFileParseType = 1
-        $queryTable.Refresh()
-        # Apply formatting to the table
-        $range = $worksheet.UsedRange
-        $worksheet.ListObjects.Add([Microsoft.Office.Interop.Excel.XlListObjectSourceType]::xlSrcRange, $range, $null, [Microsoft.Office.Interop.Excel.XlYesNoGuess]::xlYes).TableStyle = "TableStyleMedium21"
-        # Filter the first row
-        $worksheet.Rows.Item(1).AutoFilter()
-        # Freeze the first row
-        $worksheet.Application.ActiveWindow.SplitRow = 1
-        $worksheet.Application.ActiveWindow.FreezePanes = $true
-        # Save and close the Excel file
-        $workbook.SaveAs($excelPath)
-        $workbook.Close()
-        # Quit Excel application
-        $excel.Quit()
+        # Import data from CSV
+        $data = Import-Csv -Path $csvPath
+        # Define parameters for Export-Excel
+        $params = @{
+            AutoSize      = $true
+            FreezeTopRow  = $true
+            TableStyle    = 'Medium21' # => Here you can choose the Style you like the most
+            BoldTopRow    = $true
+            WorksheetName = $worksheetName
+            Path          = $excelPath # => Define where to save it here!
+        }
+        # Export data to Excel
+        $data | Export-Excel @params
         # Display a message to the console
         Write-Host "`n`t• " -NoNewline -ForegroundColor White
         Write-Host "Data exported to Excel successfully.`n" -ForegroundColor Green
