@@ -284,8 +284,6 @@ else {
     # Write a message to the log file
     Write-Log -Message "Excel directory created at $excelDir" -Level "OK" -NoConsoleOutput
 }
-# Increment $script:taskNumber after the function call
-$script:taskNumber++
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Data collection]-----------------------------------------------------------------
 # Initialize an array to hold the collected data
@@ -413,6 +411,9 @@ Write-Host "`n$Spaces$($taskNumber). Checking for existing CSV and Excel files:`
 Write-Log -Message "Checking for existing CSV and Excel files." -Level "Info" -NoConsoleOutput
 # Increment $script:taskNumber after the function call
 $script:taskNumber++
+# Define the CSV and Excel file paths
+$csvPath = Join-Path -Path $csvDir -ChildPath "LocalStorageDetails.csv"
+$excelPath = Join-Path -Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
 # Check if the CSV file already exists, if it does, rename it, move it to folder called Old. If Old folder does not exist, create it.
 if (Test-Path -Path $csvPath) {
     # Define the path to the Old folder
