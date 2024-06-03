@@ -1,28 +1,17 @@
-WARNING: Error processing appliance mar-d2-bh10-cp.adm.cm.par.emea.cib: A null key is not allowed in a hash literal.
-
-    5. Closing Excel:
-
-        • No Excel processes are currently running.
-ConnectionID Name                               UserName      AuthLoginDomain Default
------------- ----                               --------      --------------- -------
-1            mar-d2-bh10-cp.adm.cm.par.emea.cib Administrator LOCAL           True
-MethodInvocationException: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:380
+True
+Excel file saved successfully.
+InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:451
 Line |
- 380 |      $xlsx.Workbook.Worksheets.Delete($defaultWorksheet)
-     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | Exception calling "Delete" with "1" argument(s): "Object reference not set to an instance of an object."
-InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:390
+ 451 |          if ($worksheet) { $worksheet.Dispose() }
+     |                            ~~~~~~~~~~~~~~~~~~~~
+     | Method invocation failed because [System.__ComObject] does not contain a method named 'Dispose'.
+OperationStopped: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:452
 Line |
- 390 |      $vbaModule = $xlsx.Workbook.VBProject.VBComponents.Add(1)
-     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | You cannot call a method on a null-valued expression.
-InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:391
+ 452 |          if ($workbook) { $workbook.Dispose() }
+     |                           ~~~~~~~~~~~~~~~~~~~
+     | Could not get dispatch ID for Dispose (error: 0x80010108)).
+InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:453
 Line |
- 391 |      $vbaModule.CodeModule.AddFromString($vbaCode)
-     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | You cannot call a method on a null-valued expression.
-InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:394
-Line |
- 394 |      $ws.Shapes.AddShape(9, 10, 10, 80, 30).OnAction = "HighlightSelec …
-     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | You cannot call a method on a null-valued expression.
+ 453 |          if ($excel) { $excel.Dispose() }
+     |                        ~~~~~~~~~~~~~~~~
+     | Method invocation failed because [System.__ComObject] does not contain a method named 'Dispose'.
