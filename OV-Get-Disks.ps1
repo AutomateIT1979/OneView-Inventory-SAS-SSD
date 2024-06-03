@@ -132,8 +132,25 @@ Import-ModulesIfNotExists -ModuleNames 'HPEOneView.660', 'Microsoft.PowerShell.S
 # -------------------------------------------------------------- [Appliances list]-----------------------------------------------------------------
 # Task 2: import Appliances list from the CSV file.
 Write-Host "`n$Spaces$($taskNumber). Importing Appliances list from the CSV file:`n" -ForegroundColor DarkGreen
-$csvPath = Join-Path $scriptDirectory "Appliances_liste.csv"
-$appliances = Import-Csv $csvPath
+# Log the task
+Write-Log -Message "Importing Appliances list from the CSV file." -Level "Info" -NoConsoleOutput
+# Increment $script:taskNumber after the function call
+$script:taskNumber++
+# Define the path to the CSV file, it's in the same directory as the script but in a folder called "Appliances_liste"
+$csvFile = Join-Path -Path $scriptDirectory -ChildPath "Appliances_liste\Appliances_liste.csv"
+# Check if the CSV file exists
+if (Test-Path -Path $csvFile) {
+    # Import the CSV file
+    $appliances = Import-Csv -Path $csvFile
+}
+else {
+    # Display an error message if the CSV file does not exist
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "The CSV file does not exist at:" -NoNewline -ForegroundColor Red
+    Write-Host " $csvFile" -ForegroundColor DarkGray
+    # Log the error message
+    Write-Log -Message "The CSV file does not exist at $csvFile" -Level "Error" -NoConsoleOutput
+}
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Confirm Import CSV file]---------------------------------------------------------
 # Confirm that the CSV file was imported successfully
@@ -196,12 +213,14 @@ else {
 }
 # Define the path to the credential file
 $credentialFile = Join-Path -Path $credentialFolder -ChildPath "credential.txt"
-# increment $script:taskNumber after the function call
-$script:taskNumber++
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Check CSV & Excel Folders exists]------------------------------------------------
 # Task 4: Check CSV & Excel Folders exists.
 Write-Host "`n$Spaces$($taskNumber). Check CSV & Excel Folders exists:`n" -ForegroundColor DarkGreen
+# Log the task
+Write-Log -Message "Check CSV & Excel Folders exists." -Level "Info" -NoConsoleOutput
+# Increment $script:taskNumber after the function call
+$script:taskNumber++
 # Check if the credential file exists
 if (-not (Test-Path -Path $credentialFile)) {
     # Prompt the user to enter their login and password
@@ -448,7 +467,7 @@ else {
 }
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Export Data to Excel]------------------------------------------------------------
-# Task 6: Export Data to Excel
+# Task 7: Export Data to Excel
 Write-Host "`n$Spaces$($taskNumber). Exporting Data to Excel:`n" -ForegroundColor DarkGreen
 # Log the task
 Write-Log -Message "Exporting Data to Excel." -Level "Info" -NoConsoleOutput
