@@ -432,9 +432,14 @@ else {
             $queryTable.TextFileOtherDelimiter = ","
             $queryTable.TextFileParseType = 1
             $queryTable.Refresh()
-            # Highlight the first row and column
-            $worksheet.Cells.Item(1, 1).EntireRow.Interior.ColorIndex = 6  # Yellow
-            $worksheet.Cells.Item(1, 1).EntireColumn.Interior.ColorIndex = 6  # Yellow
+            # Apply formatting to the table
+            $range = $worksheet.UsedRange
+            $range.AutoFormat(1)  # Apply Table Style Light 1
+            # Filter the first row
+            $worksheet.Rows.Item(1).AutoFilter()
+            # Freeze the first row
+            $worksheet.Application.ActiveWindow.SplitRow = 1
+            $worksheet.Application.ActiveWindow.FreezePanes = $true
             # Save and close the Excel file
             $workbook.SaveAs($excelPath)
             $workbook.Close()
@@ -442,15 +447,15 @@ else {
             $excel.Quit()
             # Display a message to the console
             Write-Host "`n`t• " -NoNewline -ForegroundColor White
-            Write-Host "Data exported to Excel successfully." -ForegroundColor Green
+            Write-Host "Data exported to Excel successfully.`n" -ForegroundColor Green
             # Log the successful export of data to Excel
             Write-Log -Message "Data exported to Excel successfully." -Level "OK" -NoConsoleOutput
         }
         else {
-            Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
+            Write-Warning "`n`t• CSV file not found at $csvPath. Skipping Excel export."
         }
     }
     catch {
-        Write-Warning "Failed to import data to Excel. Error: $($_.Exception.Message)"
+        Write-Warning "`n`t• Failed to import data to Excel. Error: $($_.Exception.Message)"
     }
 }
