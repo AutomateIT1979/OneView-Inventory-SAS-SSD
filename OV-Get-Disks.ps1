@@ -415,47 +415,47 @@ if (-not $csvExported) {
     Write-Warning "Failed to export data to the CSV file after $maxAttempts attempts. Aborting Excel export."
 }
 else {
-    # Import data to Excel file
-    $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
-    $worksheetName = "LocalStorageDetails"
-    try {
-        if (Test-Path -Path $csvPath) {
-            $excel = New-Object -ComObject Excel.Application
-            $excel.Visible = $false
-            $excel.DisplayAlerts = $false
-            $workbook = $excel.Workbooks.Add()
-            $worksheet = $workbook.Worksheets.Item(1)
-            # Rename worksheet
-            $worksheet.Name = $worksheetName
-            # Import data from CSV using QueryTables
-            $queryTable = $worksheet.QueryTables.Add("TEXT;" + $csvPath, $worksheet.Range("A1"))
-            $queryTable.TextFileOtherDelimiter = ","
-            $queryTable.TextFileParseType = 1
-            $queryTable.Refresh()
-            # Apply formatting to the table
-            $range = $worksheet.UsedRange
-            $range.AutoFormat(1)  # Apply Table Style Light 1
-            # Filter the first row
-            $worksheet.Rows.Item(1).AutoFilter()
-            # Freeze the first row
-            $worksheet.Application.ActiveWindow.SplitRow = 1
-            $worksheet.Application.ActiveWindow.FreezePanes = $true
-            # Save and close the Excel file
-            $workbook.SaveAs($excelPath)
-            $workbook.Close()
-            # Quit Excel application
-            $excel.Quit()
-            # Display a message to the console
-            Write-Host "`n`t• " -NoNewline -ForegroundColor White
-            Write-Host "Data exported to Excel successfully.`n" -ForegroundColor Green
-            # Log the successful export of data to Excel
-            Write-Log -Message "Data exported to Excel successfully." -Level "OK" -NoConsoleOutput
-        }
-        else {
-            Write-Warning "`n`t• CSV file not found at $csvPath. Skipping Excel export."
-        }
+# Import data to Excel file
+$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
+$worksheetName = "LocalStorageDetails"
+try {
+    if (Test-Path -Path $csvPath) {
+        $excel = New-Object -ComObject Excel.Application
+        $null = $excel.Visible = $false  # Suppress output
+        $excel.DisplayAlerts = $false
+        $workbook = $excel.Workbooks.Add()
+        $worksheet = $workbook.Worksheets.Item(1)
+        # Rename worksheet
+        $worksheet.Name = $worksheetName
+        # Import data from CSV using QueryTables
+        $queryTable = $worksheet.QueryTables.Add("TEXT;" + $csvPath, $worksheet.Range("A1"))
+        $queryTable.TextFileOtherDelimiter = ","
+        $queryTable.TextFileParseType = 1
+        $queryTable.Refresh()
+        # Apply formatting to the table
+        $range = $worksheet.UsedRange
+        $worksheet.ListObjects.Add([Microsoft.Office.Interop.Excel.XlListObjectSourceType]::xlSrcRange, $range, $null, [Microsoft.Office.Interop.Excel.XlYesNoGuess]::xlYes).TableStyle = "TableStyleMedium21"
+        # Filter the first row
+        $worksheet.Rows.Item(1).AutoFilter()
+        # Freeze the first row
+        $worksheet.Application.ActiveWindow.SplitRow = 1
+        $worksheet.Application.ActiveWindow.FreezePanes = $true
+        # Save and close the Excel file
+        $workbook.SaveAs($excelPath)
+        $workbook.Close()
+        # Quit Excel application
+        $excel.Quit()
+        # Display a message to the console
+        Write-Host "`n`t• " -NoNewline -ForegroundColor White
+        Write-Host "Data exported to Excel successfully.`n" -ForegroundColor Green
+        # Log the successful export of data to Excel
+        Write-Log -Message "Data exported to Excel successfully." -Level "OK" -NoConsoleOutput
     }
-    catch {
-        Write-Warning "`n`t• Failed to import data to Excel. Error: $($_.Exception.Message)"
+    else {
+        Write-Warning "`n`t• CSV file not found at $csvPath. Skipping Excel export."
     }
+}
+catch {
+    Write-Warning "`n`t• Failed to import data to Excel. Error: $($_.Exception.Message)"
+}
 }
