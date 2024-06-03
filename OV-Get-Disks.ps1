@@ -437,7 +437,11 @@ else {
             $workbook.Close()
             # Quit Excel application
             $excel.Quit()
-            Write-Output "Excel file saved successfully."
+            # Display a message to the console
+            Write-Host "`n`t• " -NoNewline -ForegroundColor White
+            Write-Host "Data exported to Excel successfully." -ForegroundColor Green
+            # Log the successful export of data to Excel
+            Write-Log -Message "Data exported to Excel successfully." -Level "OK" -NoConsoleOutput
         }
         else {
             Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
