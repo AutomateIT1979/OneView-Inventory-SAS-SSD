@@ -392,49 +392,47 @@ Write-Host "`n$Spaces$($taskNumber). Exporting Data to Excel:`n" -ForegroundColo
 Write-Log -Message "Exporting Data to Excel." -Level "Info" -NoConsoleOutput
 # Increment $script:taskNumber after the function call
 $script:taskNumber++
-# Sorting and exporting data to CSV and Excel
-$sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername
-# Export data to CSV file (append mode)
-$csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
-$csvExported = $false
-while (-not $csvExported) {
-    try {
-        $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
-        $csvExported = $true
-    }
-    catch {
-        Write-Warning "Failed to export data to the CSV file. Retrying..."
-        Start-Sleep -Seconds 1
-    }
-}
-# Import data to Excel file
-$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
-$worksheetName = "LocalStorageDetails"
+# Apply VBA macro to the Excel file
 try {
-    if (Test-Path -Path $csvPath) {
+    if (Test-Path -Path $excelPath) {
         $excel = New-Object -ComObject Excel.Application
         $excel.Visible = $false
         $excel.DisplayAlerts = $false
-        $workbook = $excel.Workbooks.Add()
-        $worksheet = $workbook.Worksheets.Item(1)
-        # Rename worksheet
-        $worksheet.Name = $worksheetName
-        # Import data from CSV using QueryTables
-        $queryTable = $worksheet.QueryTables.Add("TEXT;" + $csvPath, $worksheet.Range("A1"))
-        $queryTable.TextFileOtherDelimiter = ","
-        $queryTable.TextFileParseType = 1
-        $queryTable.Refresh()
-        # Save and close the Excel file
-        $workbook.SaveAs($excelPath)
-        $workbook.Close()
-        # Quit Excel application
-        $excel.Quit()
-        Write-Output "Excel file saved successfully."
+        $workbook = $excel.Workbooks.Open($excelPath)
+        if ($null -ne $workbook) {
+            $worksheet = $workbook.Worksheets.Item($worksheetName)
+            # Add VBA macro to highlight selected row and column
+            $vbaCode = @"
+            Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+                Dim selectedRow As Range
+                Dim selectedColumn As Range
+                ' Clear previous highlighting
+                Cells.Interior.ColorIndex = xlNone
+                ' Highlight selected row
+                Set selectedRow = Rows(Target.Row)
+                selectedRow.Interior.Color = RGB(255, 255, 0) ' Yellow color
+                ' Highlight selected column
+                Set selectedColumn = Columns(Target.Column)
+                selectedColumn.Interior.Color = RGB(255, 255, 0) ' Yellow color
+            End Sub
+"@
+            $vbaModule = $workbook.VBProject.VBComponents.Item($worksheet.CodeName)
+            $vbaModule.CodeModule.AddFromString($vbaCode)
+            # Save and close the Excel file
+            $workbook.Save()
+            $workbook.Close()
+            # Quit Excel application
+            $excel.Quit()
+            Write-Output "VBA macro applied successfully."
+        }
+        else {
+            Write-Warning "Failed to import data to Excel. The workbook is null."
+        }
     }
     else {
-        Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
+        Write-Warning "Excel file not found at $excelPath. Skipping VBA macro application."
     }
 }
 catch {
-    Write-Warning "Failed to import data to Excel. Error: $($_.Exception.Message)"
+    Write-Warning "Failed to apply VBA macro to Excel. Error: $($_.Exception.Message)"
 }
