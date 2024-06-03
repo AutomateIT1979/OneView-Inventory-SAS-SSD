@@ -396,84 +396,61 @@ $script:taskNumber++
 $sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername
 # Export data to CSV file (append mode)
 $csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
+# Retry exporting to CSV file with a maximum number of attempts
 $csvExported = $false
-while (-not $csvExported) {
+$maxAttempts = 3
+$attemptCount = 0
+while (-not $csvExported -and $attemptCount -lt $maxAttempts) {
     try {
         $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
         $csvExported = $true
     }
     catch {
-        Write-Warning "Failed to export data to the CSV file. Retrying..."
+        $attemptCount++
+        Write-Warning "Failed to export data to the CSV file. Retrying... Attempt $attemptCount/$maxAttempts"
         Start-Sleep -Seconds 1
     }
 }
-# Import data to Excel file
-$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
-$worksheetName = "LocalStorageDetails"
-try {
-    if (Test-Path -Path $csvPath) {
-        $excel = New-Object -ComObject Excel.Application
-        $excel.Visible = $false
-        $excel.DisplayAlerts = $false
-        $workbook = $excel.Workbooks.OpenText($csvPath)
-        $worksheet = $workbook.Worksheets.Item(1)
-        # Rename worksheet
-        $worksheet.Name = $worksheetName
-        # Save and close the Excel file
-        $workbook.SaveAs($excelPath)
-        $workbook.Close()
-        # Quit Excel application
-        $excel.Quit()
-        Write-Output "Excel file saved successfully."
-    }
-    else {
-        Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
-    }
+if (-not $csvExported) {
+    Write-Warning "Failed to export data to the CSV file after $maxAttempts attempts. Aborting Excel export."
 }
-catch {
-    Write-Warning "Failed to import data to Excel. Error: $($_.Exception.Message)"
-}
-# Apply VBA macro to the Excel file
-try {
-    if (Test-Path -Path $excelPath) {
-        $excel = New-Object -ComObject Excel.Application
-        $excel.Visible = $false
-        $excel.DisplayAlerts = $false
-        $workbook = $excel.Workbooks.Open($excelPath)
-        if ($workbook -ne $null) {
-            $worksheet = $workbook.Worksheets.Item($worksheetName)
-            # Add VBA macro to highlight selected row and column
-            $vbaCode = @"
-            Private Sub Worksheet_SelectionChange(ByVal Target As Range)
-                Dim selectedRow As Range
-                Dim selectedColumn As Range
-                ' Clear previous highlighting
-                Cells.Interior.ColorIndex = xlNone
-                ' Highlight selected row
-                Set selectedRow = Rows(Target.Row)
-                selectedRow.Interior.Color = RGB(255, 255, 0) ' Yellow color
-                ' Highlight selected column
-                Set selectedColumn = Columns(Target.Column)
-                selectedColumn.Interior.Color = RGB(255, 255, 0) ' Yellow color
-            End Sub
-"@
-            $vbaModule = $workbook.VBProject.VBComponents.Item($worksheet.CodeName)
-            $vbaModule.CodeModule.AddFromString($vbaCode)
+else {
+    # Import data to Excel file
+    $excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
+    $worksheetName = "LocalStorageDetails"
+    try {
+        if (Test-Path -Path $csvPath) {
+            $excel = New-Object -ComObject Excel.Application
+            $excel.Visible = $false
+            $excel.DisplayAlerts = $false
+            $workbook = $excel.Workbooks.Add()
+            $worksheet = $workbook.Worksheets.Item(1)
+            # Rename worksheet
+            $worksheet.Name = $worksheetName
+            # Import data from CSV using QueryTables
+            $queryTable = $worksheet.QueryTables.Add("TEXT;" + $csvPath, $worksheet.Range("A1"))
+            $queryTable.TextFileOtherDelimiter = ","
+            $queryTable.TextFileParseType = 1
+            $queryTable.Refresh()
             # Save and close the Excel file
-            $workbook.Save()
+            $workbook.SaveAs($excelPath)
             $workbook.Close()
             # Quit Excel application
             $excel.Quit()
-            Write-Output "VBA macro applied successfully."
+            Write-Output "Excel file saved successfully."
         }
         else {
-            Write-Warning "Failed to import data to Excel. The workbook is null."
+            Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
         }
     }
-    else {
-        Write-Warning "Excel file not found at $excelPath. Skipping VBA macro application."
+    catch {
+        Write-Warning "Failed to import data to Excel. Error: $($_.Exception.Message)"
     }
-}
-catch {
-    Write-Warning "Failed to apply VBA macro to Excel. Error: $($_.Exception.Message)"
+    finally {
+        # Clean up Excel objects
+        if ($worksheet) { $worksheet.Dispose() }
+        if ($workbook) { $workbook.Dispose() }
+        if ($excel) { $excel.Dispose() }
+        Remove-Variable -Name worksheet, workbook, excel
+    }
 }
