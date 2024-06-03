@@ -446,11 +446,4 @@ else {
     catch {
         Write-Warning "Failed to import data to Excel. Error: $($_.Exception.Message)"
     }
-    finally {
-        # Clean up Excel objects
-        if ($worksheet) { $worksheet.Dispose() }
-        if ($workbook) { $workbook.Dispose() }
-        if ($excel) { $excel.Dispose() }
-        Remove-Variable -Name worksheet, workbook, excel
-    }
 }
