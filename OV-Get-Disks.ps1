@@ -385,6 +385,68 @@ else {
     Write-Host " ℹ" -ForegroundColor Cyan
 }
 # -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------- [Cheking for existing file CSV & Excel]-------------------------------------------
+# Task 6: Check if the CSV and Excel files already exist
+Write-Host "`n$Spaces$($taskNumber). Checking for existing CSV and Excel files:`n" -ForegroundColor DarkGreen
+# Log the task
+Write-Log -Message "Checking for existing CSV and Excel files." -Level "Info" -NoConsoleOutput
+# Increment $script:taskNumber after the function call
+$script:taskNumber++
+# Check if the CSV file already exists, if it does, rename it, move it to folder called Old. If Old folder does not exist, create it.
+if (Test-Path -Path $csvPath) {
+    # Define the path to the Old folder
+    $oldFolder = Join-Path -Path $csvDir -ChildPath "Old"
+    # Check if the Old folder exists
+    if (-not (Test-Path -Path $oldFolder)) {
+        # Create the Old folder if it does not exist
+        New-Item -ItemType Directory -Path $oldFolder | Out-Null
+    }
+    # Define the new file name for the existing CSV file
+    $oldCsvFile = Join-Path -Path $oldFolder -ChildPath "LocalStorageDetails_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+    # Move the existing CSV file to the Old folder
+    Move-Item -Path $csvPath -Destination $oldCsvFile -Force
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Existing CSV file moved to:" -NoNewline -ForegroundColor DarkGray
+    Write-Host " $oldCsvFile" -ForegroundColor Yellow
+    # Write a message to the log file
+    Write-Log -Message "Existing CSV file moved to $oldCsvFile" -Level "Info" -NoConsoleOutput
+}
+else {
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "No existing CSV file found." -ForegroundColor Green
+    # Write a message to the log file
+    Write-Log -Message "No existing CSV file found." -Level "Info" -NoConsoleOutput
+}
+# Check if the Excel file already exists, if it does, rename it, move it to folder called Old. If Old folder does not exist, create it.
+if (Test-Path -Path $excelPath) {
+    # Define the path to the Old folder
+    $oldFolder = Join-Path -Path $excelDir -ChildPath "Old"
+    # Check if the Old folder exists
+    if (-not (Test-Path -Path $oldFolder)) {
+        # Create the Old folder if it does not exist
+        New-Item -ItemType Directory -Path $oldFolder | Out-Null
+    }
+    # Define the new file name for the existing Excel file
+    $oldExcelFile = Join-Path -Path $oldFolder -ChildPath "LocalStorageDetails_$(Get-Date -Format 'yyyyMMdd_HHmmss').xlsx"
+    # Move the existing Excel file to the Old folder
+    Move-Item -Path $excelPath -Destination $oldExcelFile -Force
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "Existing Excel file moved to:" -NoNewline -ForegroundColor DarkGray
+    Write-Host " $oldExcelFile" -ForegroundColor Yellow
+    # Write a message to the log file
+    Write-Log -Message "Existing Excel file moved to $oldExcelFile" -Level "Info" -NoConsoleOutput
+}
+else {
+    # Write a message to the console
+    Write-Host "`t• " -NoNewline -ForegroundColor White
+    Write-Host "No existing Excel file found." -ForegroundColor Green
+    # Write a message to the log file
+    Write-Log -Message "No existing Excel file found." -Level "Info" -NoConsoleOutput
+}
+# -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------- [Export Data to Excel]------------------------------------------------------------
 # Task 6: Export Data to Excel
 Write-Host "`n$Spaces$($taskNumber). Exporting Data to Excel:`n" -ForegroundColor DarkGreen
