@@ -1,17 +1,2 @@
-True
-Excel file saved successfully.
-InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:451
-Line |
- 451 |          if ($worksheet) { $worksheet.Dispose() }
-     |                            ~~~~~~~~~~~~~~~~~~~~
-     | Method invocation failed because [System.__ComObject] does not contain a method named 'Dispose'.
-OperationStopped: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:452
-Line |
- 452 |          if ($workbook) { $workbook.Dispose() }
-     |                           ~~~~~~~~~~~~~~~~~~~
-     | Could not get dispatch ID for Dispose (error: 0x80010108)).
-InvalidOperation: D:\Script Sabri\OneView-Inventory-SAS-SSD\OV-Get-Disks.ps1:453
-Line |
- 453 |          if ($excel) { $excel.Dispose() }
-     |                        ~~~~~~~~~~~~~~~~
-     | Method invocation failed because [System.__ComObject] does not contain a method named 'Dispose'.
+WARNING:
+        • Failed to import data to Excel. Error: A table cannot overlap a range that contains a PivotTable report, query results, protected cells or another table.
