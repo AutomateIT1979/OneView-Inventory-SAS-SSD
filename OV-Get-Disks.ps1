@@ -392,6 +392,47 @@ Write-Host "`n$Spaces$($taskNumber). Exporting Data to Excel:`n" -ForegroundColo
 Write-Log -Message "Exporting Data to Excel." -Level "Info" -NoConsoleOutput
 # Increment $script:taskNumber after the function call
 $script:taskNumber++
+# Sorting and exporting data to CSV and Excel
+$sortedData = $data | Sort-Object -Property ApplianceFQDN, Servername
+# Export data to CSV file (append mode)
+$csvPath = Join-Path $csvDir -ChildPath "LocalStorageDetails.csv"
+$csvExported = $false
+while (-not $csvExported) {
+    try {
+        $sortedData | Export-Csv -Path $csvPath -NoTypeInformation -Append
+        $csvExported = $true
+    }
+    catch {
+        Write-Warning "Failed to export data to the CSV file. Retrying..."
+        Start-Sleep -Seconds 1
+    }
+}
+# Import data to Excel file
+$excelPath = Join-Path $excelDir -ChildPath "LocalStorageDetails.xlsx"
+$worksheetName = "LocalStorageDetails"
+try {
+    if (Test-Path -Path $csvPath) {
+        $excel = New-Object -ComObject Excel.Application
+        $excel.Visible = $false
+        $excel.DisplayAlerts = $false
+        $workbook = $excel.Workbooks.OpenText($csvPath)
+        $worksheet = $workbook.Worksheets.Item(1)
+        # Rename worksheet
+        $worksheet.Name = $worksheetName
+        # Save and close the Excel file
+        $workbook.SaveAs($excelPath)
+        $workbook.Close()
+        # Quit Excel application
+        $excel.Quit()
+        Write-Output "Excel file saved successfully."
+    }
+    else {
+        Write-Warning "CSV file not found at $csvPath. Skipping Excel export."
+    }
+}
+catch {
+    Write-Warning "Failed to import data to Excel. Error: $($_.Exception.Message)"
+}
 # Apply VBA macro to the Excel file
 try {
     if (Test-Path -Path $excelPath) {
@@ -399,7 +440,7 @@ try {
         $excel.Visible = $false
         $excel.DisplayAlerts = $false
         $workbook = $excel.Workbooks.Open($excelPath)
-        if ($null -ne $workbook) {
+        if ($workbook -ne $null) {
             $worksheet = $workbook.Worksheets.Item($worksheetName)
             # Add VBA macro to highlight selected row and column
             $vbaCode = @"
