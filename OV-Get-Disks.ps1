@@ -432,6 +432,9 @@ else {
             $queryTable.TextFileOtherDelimiter = ","
             $queryTable.TextFileParseType = 1
             $queryTable.Refresh()
+            # Highlight the first row and column
+            $worksheet.Cells.Item(1, 1).EntireRow.Interior.ColorIndex = 6  # Yellow
+            $worksheet.Cells.Item(1, 1).EntireColumn.Interior.ColorIndex = 6  # Yellow
             # Save and close the Excel file
             $workbook.SaveAs($excelPath)
             $workbook.Close()
