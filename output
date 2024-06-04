@@ -1,1 +1,363 @@
+# Function to convert CIDR -> Netmask or Netmask -> CIDR
+#Example  Convert-Subnetmask -Mask 255.255.255.0
+#Example Convert-Subnetmask -CIDR 24
+
+function Convert-Subnetmask
+{
+    [CmdLetBinding(DefaultParameterSetName='CIDR')]
+    param( 
+        [Parameter( 
+            ParameterSetName='CIDR',       
+            Position=0,
+            Mandatory=$true,
+            HelpMessage='CIDR like /24 without "/"')]
+        [ValidateRange(0,32)]
+        [Int32]$CIDR,
+
+        [Parameter(
+            ParameterSetName='Mask',
+            Position=0,
+            Mandatory=$true,
+            HelpMessage='Subnetmask like 255.255.255.0')]
+        [ValidateScript({
+            if($_ -match "^(254|252|248|240|224|192|128).0.0.0$|^255.(254|252|248|240|224|192|128|0).0.0$|^255.255.(254|252|248|240|224|192|128|0).0$|^255.255.255.(255|254|252|248|240|224|192|128|0)$")
+            {
+                return $true
+            }
+            else 
+            {
+                throw "Enter a valid subnetmask (like 255.255.255.0)!"    
+            }
+        })]
+        [String]$Mask
+    )
+
+    Begin {
+
+    }
+
+    Process {
+        switch($PSCmdlet.ParameterSetName)
+        {
+            "CIDR" {                          
+                # Make a string of bits (24 to 11111111111111111111111100000000)
+                $CIDR_Bits = ('1' * $CIDR).PadRight(32, "0")
+                
+                # Split into groups of 8 bits, convert to Ints, join up into a string
+                $Octets = $CIDR_Bits -split '(.{8})' -ne ''
+                $Mask = ($Octets | ForEach-Object -Process {[Convert]::ToInt32($_, 2) }) -join '.'
+            }
+
+            "Mask" {
+                # Convert the numbers into 8 bit blocks, join them all together, count the 1
+                $Octets = $Mask.ToString().Split(".") | ForEach-Object -Process {[Convert]::ToString($_, 2)}
+                $CIDR_Bits = ($Octets -join "").TrimEnd("0")
+
+                # Count the "1" (111111111111111111111111 --> /24)                     
+                $CIDR = $CIDR_Bits.Length             
+            }               
+        }
+
+        [pscustomobject] @{
+            Mask = $Mask
+            CIDR = $CIDR
+        }
+    }
+
+    End {
+        
+    }
+}
+
+
+############################################## MAIN ##############################################
+
+
+
+# ********** Variable **********
+
+
+$SqlInstance = "WPVPADB00000060.emea.cib\IS_NSDIV_PRD"
+$SQLDatabase = "ICW"
+$SQLUser = "IP_Read"
+$SQLPwd = "ipcalyonread"
+$Computername = $env:computername
+
+# DMZ Machine already configured 
+$Computername = $Computername.ToUpper()
+if ($Computername.StartsWith("WG")){
+write-host "DMZ MACHINE"
+exit 0
+}
+
+
+#$NICInterfaceName = "Ethernet0"
+
+
+# ********** Get the current path *********
+$InstallationPath = (Get-Location).Path               # Path to the script
+
+
+# ********** SQL Request **********
+
+$SQLQuery = "Select * FROM IP_PROD where COMPUTER = '$Computername'"
+$tables = $Null
+
+
+# ********** Get Ip data from DB **********
+
+$SqlConnection = New-Object System.Data.SqlClient.SqlConnection
+$SqlConnection.ConnectionString = "Data Source=WPVPADB00000060.emea.cib\IS_NSDIV_PRD;USER ID='IP_Read';PASSWORD='ipcalyonread';Trusted_Connection=NO;Initial Catalog=ICW;"
+
+
+$SqlCmd = New-Object System.Data.SqlClient.SqlCommand
+$SqlCmd.CommandText = $SqlQuery
+$SqlCmd.Connection = $SqlConnection
+$SqlAdapter = New-Object System.Data.SqlClient.SqlDataAdapter
+$SqlAdapter.SelectCommand = $SqlCmd
+$DataSet = New-Object System.Data.DataSet
+$SqlAdapter.Fill($DataSet)
+$Tables = $DataSet.Tables[0]
+
+
+If ($tables -ne $NULL)
+{
+	$ip = $tables.IP
+	$netmask = $tables.MASK
+	$gateway = $tables.GATEWAY
+    $MACADRESS = $tables[4] # Not used anymore
+    $VLANID = $tables[5] # Not used anymore
+}
+
+write-host "IP Information for $Computername : "
+write-host $ip 
+write-host $netmask
+write-host $gateway 
+
+
+# ********** In case of cluster then we need more information from DB **********
+
+
+$table2 = $Null
+$SQLQuery2 = "Select * FROM IP_heartbeat where COMPUTER = '$Computername'"
+
+if ($Computername -Match "CU" -And $Computername -Match "PH") { 
+
+
+
+$SqlCmd2 = New-Object System.Data.SqlClient.SqlCommand
+$SqlCmd2.CommandText = $SqlQuery2
+$SqlCmd2.Connection = $SqlConnection
+$SqlAdapter2 = New-Object System.Data.SqlClient.SqlDataAdapter
+$SqlAdapter2.SelectCommand = $SqlCmd2
+$DataSet2 = New-Object System.Data.DataSet
+$SqlAdapter2.Fill($DataSet2)
+$Table2 = $DataSet2.Tables[0]
+
+		$IPAddressheart = $table2.IP
+		$SubnetMaskheart = $table2.MASK
+		$MACADRESSHEARTBEAT = $table2.MACADDRESS
+        $MACADRESSHEARTBEAT = $MACADRESSHEARTBEAT.Replace(":","-")
+
+
+write-host "Hearbeat IP Information for $Computername : "
+write-host $IPAddressheart
+write-host $SubnetMaskheart
+write-host $MACADRESSHEARTBEAT 
+
+}
+
+# ********** If @Ip is empty then Exit **********
+
+If ($ip -eq "") {Exit 1234}
+
+#$TESTIP = Get-NetIPAddress | where PrefixOrigin -match "Dhcp"
+
+
+
+
+# Convert netmack to CIDR
+$CIDR = (Convert-Subnetmask -Mask $netmask).CIDR
+Write-Host "CIDR is : /$CIDR"
+
+$DNS = "10.126.21.101","10.126.21.61"
+
+
+# ********** Indentify and Rename Integration NIC **********
+
+
+Try {
+Rename-NetAdapter -Name ((Get-NetIPAddress | ?{($_.ipaddress -notmatch "169.254." -and $_.PrefixOrigin -eq "Dhcp" )}).InterfaceAlias) -NewName "Integration"
+Set-NetIPInterface -InterfaceAlias "Integration" -InterfaceMetric 300
+}
+
+catch {
+ write-output "Errors detected With Integration NIC Configuration"
+                $error.Clear()
+
+if ($Computername -notMatch "WGAPPA") {
+Exit 998 # Errors detected With Integration NIC Configuration
+}
+                }
+
+
+# ********** HB NIC Configuration **********
+
+if ($Computername -Match "CU" -And $Computername -Match "PH") { 
+
+
+$HBadapter = Get-NetAdapter | where {($_.MacAddress -eq $MACADRESSHEARTBEAT )}
+
+If (($HBadapter | Get-NetIPConfiguration).NetAdapter.Status -eq "Disconnected") {
+    
+    write-host "ERROR HB NIC status disconnected  " 
+         Exit 222 # Error with HB IP configuration (Disconnected)
+             
+} else { write-host "HB NIC status connected "
+       }
+
+$CIDRheart = (Convert-Subnetmask -Mask $SubnetMaskheart).CIDR
+
+$HBadapter | Rename-NetAdapter -NewName "Heartbeat"
+Set-NetIPInterface -InterfaceIndex $HBadapter.ifIndex -InterfaceMetric 350
+Start-Sleep -Seconds 10
+New-NetIPAddress -InterfaceIndex $HBadapter.ifIndex -IPAddress $IPAddressheart -PrefixLength $CIDRheart | out-null
+Start-Sleep -Seconds 10
+
+If (($HBadapter | Get-NetIPConfiguration).IPv4Address.IPAddress) {
+    write-host "HB Config IP OK"
+} else { write-host "HB Config IP Failed" 
+         Exit 777 # Error with HB IP configuration
+       }
+
+}
+
+
+# ********** Identify Production NIC **********
+# 
+# $nics = Get-NetIPInterface | where {($_.InterfaceAlias -notmatch 'Loopback') -and ($_.dhcp -eq 'Disabled')}
+# $nics = Get-NetIPInterface | where {($_.InterfaceAlias -notmatch 'Loopback') -and ($_.IPv4Address.ipaddress -notmatch "169.254.")}
+# $nics = Get-NetIPInterface | where {($_.InterfaceAlias -notmatch 'Loopback') -and ($_.IPv4Address.ipaddress -notmatch "10.146.")} | Set-NetIPInterface -InterfaceIndex $_.InterfaceIndex -InterfaceMetric 300 | 
+# $ConfInt = Get-NetIPConfiguration | ?{($_.IPv4Address.ipaddress -notmatch "169.254.")}
+
+#Get-NetAdapter -InterfaceIndex $_.InterfaceIndex | Rename-NetAdapter -NewName "Production"
+
+$nics = Get-NetIPInterface | where {($_.InterfaceAlias -notmatch 'Loopback' -and $_.InterfaceAlias -notmatch 'Integration'-and $_.InterfaceAlias -notmatch 'Heartbeat' -and $_.ConnectionState -eq 'Connected')}
+$ConfIP = Get-NetIPConfiguration | ?{($_.IPv4Address.ipaddress -match "169.254." -and $_.NetAdapter.Status -notmatch "Disconnected")}
+
+# ********** Prod NIC Configuration **********
+
+$Prodfound = "0"
+
+Try {
+
+
+$ConfIP | ForEach-Object  {
+
+if ($Prodfound -eq "0") {
+
+New-NetIPAddress -InterfaceIndex $_.InterfaceIndex -IPAddress $ip -DefaultGateway $gateway -PrefixLength $CIDR | out-null
+
+Start-Sleep -Seconds 10
+
+$Pingresult = Test-NetConnection $gateway
+
+Start-Sleep -Seconds 10
+
+
+If ( ($Pingresult.SourceAddress.IPAddress -eq $Ip) -and ($Pingresult.PingSucceeded -eq $True) ) {
+
+Write-Host "Ping Gateway OK"
+Get-NetAdapter -InterfaceIndex $_.InterfaceIndex | Rename-NetAdapter -NewName "Production"
+Set-NetIPInterface -InterfaceIndex $_.InterfaceIndex -InterfaceMetric 1
+ 
+Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses $DNS
+Set-DnsClient -InterfaceIndex $_.InterfaceIndex -ConnectionSpecificSuffix "emea.cib" -RegisterThisConnectionsAddress $False -UseSuffixWhenRegistering $true
+$Prodfound = "1"
+}
+else 
+{
+
+Write-Host "Ping Prod Gateway KO"
+#Get-NetAdapter -InterfaceIndex $_.InterfaceIndex | Remove-NetIpAddress -Confirm:$false
+#Get-NetAdapter -InterfaceIndex $_.InterfaceIndex | Remove-NetRoute -Confirm:$false
+
+Remove-NetIpAddress  -InterfaceIndex $_.InterfaceIndex -Confirm:$false
+Remove-NetRoute  -InterfaceIndex $_.InterfaceIndex -Confirm:$false
+Set-NetIPInterface -InterfaceIndex $_.InterfaceIndex -Dhcp Enabled
+Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddresses
+
+}
+ }                      
+                       
+                        }
+
+
+}
+
+catch {
+
+ write-output "Errors detected with Production NIC configuration: " $error.count 
+                $error.Clear()
+                Exit 999 # Error with Production NIC configuration
+
+}
+
+if ($Prodfound -eq "0") {
+Write-Host "No prod Found"
+Exit 555 # Error with Production NIC configuration
+
+}
+
+# ********** Set DNS configuration  **********
+Try {
+
+Set-DnsClientGlobalSetting -SuffixSearchList @("emea.cib","cm.par.emea.cib","prod.par.ca-indosuez.com","par.emea.cib","usr.par.emea.cib","msx.cib","prd.cm.par.emea.cib","capitalmarkets.fr.cly")
+
+#$nics | Set-DnsClientServerAddress -ServerAddresses $DNS # --> a faire uniquement sur la prod
+#$nics | Set-DnsClient -ConnectionSpecificSuffix "emea.cib" -RegisterThisConnectionsAddress $False -UseSuffixWhenRegistering $true
+
+if ($Computername.StartsWith("CM")) {
+                                        $nics | Set-DnsClient -ConnectionSpecificSuffix "cm.par.emea.cib" -RegisterThisConnectionsAddress $False -UseSuffixWhenRegistering $true
+                                    }
+}
+
+catch {
+ 
+  write-output "Errors detected with DNS Configuration: " $error.count 
+                $error.Clear()
+                Exit 997 # Error with DNS Configuration
+
+}
+
+
+
+# TEST $HBadapter = Get-NetAdapter | where {($_.MacAddress -eq "00-17-FA-C8-F2-1B" )}
+
+
+
+
+# **************************************************************************************
+#   WriteLogDetails function                                                           *
+#                                                                                      *
+#      Purpose : Display the comment parameter and write it into the log file          *
+#                                                                                      *
+#      Input :                                                                         *
+#         - $Comment : string to display and to write into the log file                *
+#                                                                                      *
+#         - $ForegroundColor : color of the comment to display                         *
+#                                                                                      *
+# **************************************************************************************
+
+Function WriteLogDetails
+{
+    Param ($Comment, $ForegroundColor)
+
+    Write-Host $Comment -ForegroundColor $ForegroundColor
+    $date = Get-Date -format G
+    Add-Content $LogFile "$date : $Comment`n"
+}
+
+Get-DnsClient | Set-DNSClient –RegisterThisConnectionsAddress $False
+
 
