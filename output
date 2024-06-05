@@ -1,1 +1,60 @@
+# Get all network adapters that are:
+# - Up (connected)
+# - Have 10Gb/s link speed
+$adapters = Get-NetAdapter | Where-Object { $_.Status -eq "Up" -and $_.LinkSpeed -eq 10Gb }
+
+# Group adapters by their base InterfaceDescription (without enumeration)
+$adapterGroups = $adapters | Group-Object { $_.InterfaceDescription -replace "\(\d+\)$", "" }
+
+# Select the group with the most adapters (likely the target adapter group)
+$targetAdapterGroup = $adapterGroups | Sort-Object Count -Descending | Select-Object -First 1
+
+if ($targetAdapterGroup) {
+    # Get the adapters from the target group (these are the ones to be teamed)
+    $teamingAdapters = $targetAdapterGroup.Group
+
+    # Choose the Load Balancing Algorithm based on the OS
+    $loadBalancingAlgorithm = If ((Get-CimInstance Win32_OperatingSystem).Caption -match "Hyper-V") { "HyperVPort" } Else { "Dynamic" }
+
+    # Create the teaming configuration
+    $teamingConfig = @{
+        Name = "Production"
+        TeamMembers = $teamingAdapters.Name
+        TeamingMode = "LACP"
+        LoadBalancingAlgorithm = $loadBalancingAlgorithm
+    }
+
+    try {
+        # Create the team
+        New-NetLbfoTeam @teamingConfig
+
+        # Get the IP configuration of one of the teamed adapters
+        $ipConfig = $teamingAdapters | Get-NetIPAddress | Select-Object -First 1
+
+        # Set the IP address and DNS using the existing configuration
+        $ipAddress = $ipConfig.IPAddress
+        $defaultGateway = $ipConfig.DefaultGateway
+        $dnsServers = $ipConfig.DNSServer | Where-Object { $_ } # Filter out empty DNS servers
+
+        # Calculate prefix length from subnet mask
+        $subnetMaskBytes = $ipConfig.IPv4Address.SubnetMask.GetAddressBytes()
+        $prefixLength = 0
+        foreach ($byte in $subnetMaskBytes) {
+            while ($byte -band 1) {
+                $prefixLength++
+                $byte = $byte -shr 1
+            }
+        }
+
+        New-NetIPAddress -InterfaceAlias Production -IPAddress $ipAddress -PrefixLength $prefixLength -DefaultGateway $defaultGateway
+        Set-DnsClientServerAddress -InterfaceAlias Production -ServerAddresses $dnsServers
+
+        Write-Output "Teaming successful. New interface 'Production' created and configured."
+    }
+    catch {
+        Write-Error "Error creating team or configuring IP/DNS: $_"
+    }
+} else {
+    Write-Warning "No suitable network adapters found for teaming."
+}
 
