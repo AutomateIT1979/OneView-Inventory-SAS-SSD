@@ -28,16 +28,14 @@ if ($targetAdapterGroup) {
         # Create the team
         New-NetLbfoTeam @teamingConfig
 
-        # Get the IP configuration of one of the teamed adapters
-        $ipConfig = $teamingAdapters | Get-NetIPAddress | Select-Object -First 1
+        # Set the IP address and DNS (REPLACE WITH YOUR ACTUAL VALUES)
+        $ipAddress = "192.168.1.10"          # Replace with your desired IP address
+        $defaultGateway = "192.168.1.1"    # Replace with your default gateway
+        $dnsServers = "8.8.8.8", "8.8.4.4"  # Replace with your DNS servers
 
-        # Set the IP address and DNS using the existing configuration
-        $ipAddress = $ipConfig.IPAddress
-        $defaultGateway = $ipConfig.DefaultGateway
-        $dnsServers = $ipConfig.DNSServer | Where-Object { $_ } # Filter out empty DNS servers
-
-        # Calculate prefix length from subnet mask
-        $subnetMaskBytes = $ipConfig.IPv4Address.SubnetMask.GetAddressBytes()
+        # Calculate prefix length from subnet mask (REPLACE WITH YOUR ACTUAL SUBNET MASK)
+        $subnetMask = "255.255.255.0" # Replace with your subnet mask
+        $subnetMaskBytes = [System.Net.IPAddress]::Parse($subnetMask).GetAddressBytes()
         $prefixLength = 0
         foreach ($byte in $subnetMaskBytes) {
             while ($byte -band 1) {
@@ -57,4 +55,3 @@ if ($targetAdapterGroup) {
 } else {
     Write-Warning "No suitable network adapters found for teaming."
 }
-
